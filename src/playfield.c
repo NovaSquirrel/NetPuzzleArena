@@ -1,6 +1,4 @@
 #include "puzzle.h"
-#define TIMER1_TIME 60
-#define TIMER2_TIME 8
 
 int PlayfieldWidth = 6;
 int PlayfieldHeight = 13;
@@ -111,7 +109,10 @@ void UpdatePlayfield(struct Playfield *P) {
         Match->Child = NULL;
         Match->Next = NULL;
         Match->Timer1 = 0;
-        Match->Timer2 = TIMER2_TIME;
+        if(!FirstMatch)
+          Match->Timer2 = 26;
+        else
+          Match->Timer2 = 10;
 
         for(int i=0; i<Width; i++)
           SetTile(P, x+i, y, BLOCK_DISABLED);
@@ -131,7 +132,7 @@ void UpdatePlayfield(struct Playfield *P) {
       FirstMatch->Next = P->Match;
       P->Match = FirstMatch;
     }
-    FirstMatch->Timer1 = TIMER1_TIME;
+    FirstMatch->Timer1 = 46;
   }
   
   // Make blocks explode
@@ -149,7 +150,7 @@ void UpdatePlayfield(struct Playfield *P) {
 
     Last->Timer2--;
     if(!Last->Timer2) {
-      Last->Timer2 = TIMER2_TIME;
+      Last->Timer2 = 10;
       Last->DisplayX++;
       Last->DisplayWidth--;
 
@@ -205,7 +206,7 @@ void UpdatePlayfield(struct Playfield *P) {
         }
         // if the falling just now started, set a timer
         if(!P->FallingColumns[x].IsFalling) {
-          P->FallingColumns[x].Timer = 20;
+          P->FallingColumns[x].Timer = 12;
           P->FallingColumns[x].IsFalling = 1;
         } else {
           if(P->FallingColumns[x].Timer)
