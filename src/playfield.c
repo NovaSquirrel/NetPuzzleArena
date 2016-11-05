@@ -42,7 +42,9 @@ void UpdatePlayfield(struct Playfield *P) {
   if(P->KeyNew[KEY_SWAP]) {
     int Tile1 = GetTile(P, P->CursorX, P->CursorY);
     int Tile2 = GetTile(P, P->CursorX+1, P->CursorY);
-    if(Tile1 != BLOCK_DISABLED && Tile2 != BLOCK_DISABLED) {
+    if((Tile1 != BLOCK_DISABLED && Tile2 != BLOCK_DISABLED) &&
+       (!P->FallingColumns[P->CursorX].IsFalling || P->FallingColumns[P->CursorX].SwapLock < P->CursorY) &&
+       (!P->FallingColumns[P->CursorX+1].IsFalling || P->FallingColumns[P->CursorX+1].SwapLock < P->CursorY)) {
       SetTile(P, P->CursorX, P->CursorY, Tile2);
       SetTile(P, P->CursorX+1, P->CursorY, Tile1);
     }
@@ -58,8 +60,11 @@ void UpdatePlayfield(struct Playfield *P) {
       int Horiz = 0, Vert = 0, Color = GetTile(P, x, y);
       if(!Color || Color==BLOCK_DISABLED)
         continue;
+      if(P->FallingColumns[x].IsFalling && P->FallingColumns[x].SwapLock >= y)
+        continue;
 
-      while(x+Horiz+1 < P->Width && GetTile(P, x+Horiz+1, y) == Color)
+      while((x+Horiz+1 < P->Width && GetTile(P, x+Horiz+1, y) == Color) &&
+            (!P->FallingColumns[x+Horiz+1].IsFalling || P->FallingColumns[x+Horiz+1].SwapLock < y))
         Horiz++;
       while(y+Vert+1 < P->Height-1 && !Used[x][y+Vert+1] && GetTile(P, x, y+Vert+1) == Color)
         Vert++;
@@ -113,15 +118,7 @@ void UpdatePlayfield(struct Playfield *P) {
     }
     FirstMatch->Timer1 = TIMER1_TIME;
   }
-
-  // placeholder gravity
-  for(int y=0; y<P->Height-2; y++)
-    for(int x=0; x<P->Width; x++)
-      if(GetTile(P, x, y) && !GetTile(P, x, y+1)) {
-        SetTile(P, x, y+1, GetTile(P, x, y));
-        SetTile(P, x, y, 0);
-      }
-
+  
   // Make blocks explode
   for(struct MatchRow *Match = P->Match; Match; Match=Match->Next) {
     // Stay white for a moment
@@ -163,7 +160,6 @@ void UpdatePlayfield(struct Playfield *P) {
           Last = Next;
         }
       }
-
 /*
       if(!Last->Width) {
         if(P->Last == Match)
@@ -180,6 +176,48 @@ void UpdatePlayfield(struct Playfield *P) {
         free(Match);
       }
 */
+    }
+  }
+
+
+/*
+  // placeholder gravity
+  for(int y=0; y<P->Height-2; y++)
+    for(int x=0; x<P->Width; x++)
+      if(GetTile(P, x, y) && !GetTile(P, x, y+1)) {
+        SetTile(P, x, y+1, GetTile(P, x, y));
+        SetTile(P, x, y, 0);
+      }
+*/
+  // real gravity
+  for(int x=0; x< P->Width; x++) {
+    int HighestGround = P->Height-1;
+    while(HighestGround && GetTile(P, x, HighestGround))
+      HighestGround--;
+    // if the column is not all the way filled up, look for any floating blocks
+    if(HighestGround) {
+      int LowestFloating = HighestGround;
+      while(LowestFloating && !GetTile(P, x, LowestFloating))
+        LowestFloating--;
+      // if floating blocks are found, decide what to do
+      if(LowestFloating) {
+        // if the falling just now started, set a timer
+        if(!P->FallingColumns[x].IsFalling) {
+          P->FallingColumns[x].Timer = 20;
+          P->FallingColumns[x].IsFalling = 1;
+        } else {
+          if(P->FallingColumns[x].Timer)
+            P->FallingColumns[x].Timer--;
+          else {
+            for(int y=HighestGround; y; y--)
+              SetTile(P, x, y, GetTile(P, x, y-1));
+            SetTile(P, x, 0, BLOCK_EMPTY);
+          }
+        }
+        P->FallingColumns[x].SwapLock = LowestFloating;
+      } else {
+        P->FallingColumns[x].IsFalling = 0;
+      }
     }
   }
 

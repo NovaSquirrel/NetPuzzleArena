@@ -45,8 +45,20 @@ enum BlockColor {
   BLOCK_DISABLED
 };
 
+struct FallingData {
+  int IsFalling; // if 1, currently falling
+  int Timer;     // if nonzero, wait this amount of time before bringing blocks down
+  int SwapLock;  // disable swaps above this height
+};
+
 struct MatchRow {
-  int Color, X, Y, Width, Timer1, Timer2, DisplayX, DisplayWidth;
+  int Color; // color of the row
+  int X, Y;  // position in the playfield of the row
+  int Width; // how many blocks are in the row
+  int Timer1; // timer for how long until blocks disappear
+  int Timer2; // timer for making individual blocks disappear
+  int DisplayX;     // \ used to make blocks gradually disappear
+  int DisplayWidth; // /
   struct MatchRow *Child, *Next;
 };
 
@@ -60,6 +72,7 @@ struct Playfield {
   int KeyRepeat[KEY_COUNT];
   int *Playfield;
   struct MatchRow *Match;
+  struct FallingData *FallingColumns;
 };
 
 void SDL_MessageBox(int Type, const char *Title, SDL_Window *Window, const char *fmt, ...);

@@ -96,6 +96,7 @@ int main(int argc, char *argv[]) {
   Player1.Width = 6;
   Player1.Height = 13;
   Player1.Playfield = calloc(Player1.Width * Player1.Height, sizeof(int));
+  Player1.FallingColumns = calloc(Player1.Width, sizeof(struct FallingData));
   for(int i=0; i<6; i++)
     for(int j=8; j<13; j++)
       Player1.Playfield[j*Player1.Width + i] = (rand()%(BLOCK_BLUE-1))+1;
