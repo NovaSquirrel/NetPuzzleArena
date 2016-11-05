@@ -30,6 +30,8 @@ void UpdatePlayfield(struct Playfield *P) {
   }
   memcpy(P->KeyLast, P->KeyDown, sizeof(P->KeyDown));
 
+  int SwapMade = 0;
+
   // Cursor movement
   if(P->KeyNew[KEY_LEFT])
     P->CursorX -= (P->CursorX != 0);
@@ -48,8 +50,8 @@ void UpdatePlayfield(struct Playfield *P) {
       SetTile(P, P->CursorX, P->CursorY, Tile2);
       SetTile(P, P->CursorX+1, P->CursorY, Tile1);
     }
+    SwapMade = 1;
   }
-
 
   // Look for matches
   struct MatchRow *FirstMatch = NULL, *CurMatch = NULL;
@@ -60,11 +62,12 @@ void UpdatePlayfield(struct Playfield *P) {
       int Horiz = 0, Vert = 0, Color = GetTile(P, x, y);
       if(!Color || Color==BLOCK_DISABLED)
         continue;
-      if(P->FallingColumns[x].IsFalling && P->FallingColumns[x].SwapLock >= y)
+      if(P->FallingColumns[x].IsFalling && P->FallingColumns[x].GroundLevel > y)
         continue;
 
       while((x+Horiz+1 < P->Width && GetTile(P, x+Horiz+1, y) == Color) &&
-            (!P->FallingColumns[x+Horiz+1].IsFalling || P->FallingColumns[x+Horiz+1].SwapLock < y))
+           ((!P->FallingColumns[x+Horiz+1].IsFalling || P->FallingColumns[x+Horiz+1].GroundLevel <= y) ||
+            (SwapMade && ((x+Horiz+1 == P->CursorX) || (x+Horiz+1 == P->CursorX+1)))))
         Horiz++;
       while(y+Vert+1 < P->Height-1 && !Used[x][y+Vert+1] && GetTile(P, x, y+Vert+1) == Color)
         Vert++;
@@ -140,10 +143,11 @@ void UpdatePlayfield(struct Playfield *P) {
 
       // did the last one finish clearing out?
       if(!Last->DisplayWidth && !Last->Child) {
+
         // adjust pointers
-        if(P->Match == Match)
+        if(P->Match == Match) {
           P->Match = Match->Next;
-        else {
+        } else {
           struct MatchRow *Find = P->Match;
           while(Find->Next != Match)
             Find = Find->Next;
@@ -152,44 +156,26 @@ void UpdatePlayfield(struct Playfield *P) {
 
         // free, and also erase all those blocks
         for(Last = Match; Last;) {
-          for(int i=0; i<Last->Width; i++)
-            SetTile(P, Last->X+i, Last->Y, BLOCK_EMPTY);
-
           struct MatchRow *Next = Last->Child;
           free(Last);
           Last = Next;
         }
       }
-/*
-      if(!Last->Width) {
-        if(P->Last == Match)
-          P->Last = Match->Child;
-        else {
-          struct MatchRow *Find = P->Match;
-          while(Find->Next != Match)
-            Find = Find->Next;
-          if(Match->Child)
-            Find->Next = Match->Child;
-          else
-            Find->Next = Match->Next;
-        }
-        free(Match);
-      }
-*/
     }
   }
 
+  // Change disabled blocks back to regular ones
+  memset(Used, 0, sizeof(Used));
+  for(struct MatchRow *Heads = P->Match; Heads; Heads=Heads->Next)
+    for(struct MatchRow *Match = Heads; Match; Match=Match->Child)
+      for(int i=0; i<Match->Width; i++)
+        Used[Match->X+i][Match->Y] = 1;
+  for(int x=0; x<P->Width; x++)
+    for(int y=0; y<P->Height; y++)
+      if(GetTile(P, x, y) == BLOCK_DISABLED && !Used[x][y])
+        SetTile(P, x, y, BLOCK_EMPTY);
 
-/*
-  // placeholder gravity
-  for(int y=0; y<P->Height-2; y++)
-    for(int x=0; x<P->Width; x++)
-      if(GetTile(P, x, y) && !GetTile(P, x, y+1)) {
-        SetTile(P, x, y+1, GetTile(P, x, y));
-        SetTile(P, x, y, 0);
-      }
-*/
-  // real gravity
+  // gravity
   for(int x=0; x< P->Width; x++) {
     int HighestGround = P->Height-1;
     while(HighestGround && GetTile(P, x, HighestGround))
@@ -201,6 +187,10 @@ void UpdatePlayfield(struct Playfield *P) {
         LowestFloating--;
       // if floating blocks are found, decide what to do
       if(LowestFloating) {
+        if(GetTile(P, x, LowestFloating) == BLOCK_DISABLED) {
+          P->FallingColumns[x].IsFalling = 0;
+          continue;
+        }
         // if the falling just now started, set a timer
         if(!P->FallingColumns[x].IsFalling) {
           P->FallingColumns[x].Timer = 20;
@@ -215,6 +205,7 @@ void UpdatePlayfield(struct Playfield *P) {
           }
         }
         P->FallingColumns[x].SwapLock = LowestFloating;
+        P->FallingColumns[x].GroundLevel = HighestGround;
       } else {
         P->FallingColumns[x].IsFalling = 0;
       }
@@ -235,8 +226,11 @@ void UpdatePlayfield(struct Playfield *P) {
     P->Rise = 0;
 
     // generate new blocks
-    for(int x=0; x<P->Width; x++)
+    for(int x=0; x<P->Width; x++) {
       SetTile(P, x, P->Height-1, (rand()%(BLOCK_BLUE-1))+1);
+      // also update falling data
+      P->FallingColumns[x].SwapLock--;
+    }
 
     // move exploding blocks up
     for(struct MatchRow *Heads = P->Match; Heads; Heads=Heads->Next)

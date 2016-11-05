@@ -49,6 +49,7 @@ struct FallingData {
   int IsFalling; // if 1, currently falling
   int Timer;     // if nonzero, wait this amount of time before bringing blocks down
   int SwapLock;  // disable swaps above this height
+  int GroundLevel;
 };
 
 struct MatchRow {
