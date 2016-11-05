@@ -117,8 +117,8 @@ int main(int argc, char *argv[]) {
     Player1.KeyDown[KEY_RIGHT] = Keyboard[SDL_SCANCODE_RIGHT];
     Player1.KeyDown[KEY_OK] = Keyboard[SDL_SCANCODE_RETURN];
     Player1.KeyDown[KEY_BACK] = Keyboard[SDL_SCANCODE_BACKSPACE];
-    Player1.KeyDown[KEY_SWAP] = Keyboard[SDL_SCANCODE_Z];
-    Player1.KeyDown[KEY_LIFT] = Keyboard[SDL_SCANCODE_X];
+    Player1.KeyDown[KEY_SWAP] = Keyboard[SDL_SCANCODE_SPACE];
+    Player1.KeyDown[KEY_LIFT] = Keyboard[SDL_SCANCODE_Z];
     Player1.KeyDown[KEY_PAUSE] = Keyboard[SDL_SCANCODE_P];
 
     UpdatePlayfield(&Player1);
