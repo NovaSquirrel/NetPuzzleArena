@@ -52,6 +52,18 @@ void UpdatePlayfield(struct Playfield *P) {
     }
     SwapMade = 1;
   }
+  if(P->KeyNew[KEY_PAUSE])
+    P->Paused ^= 1;
+  if(P->Paused) {
+    // allow editing the playfield for debugging stuff
+    if(P->KeyNew[KEY_OK])
+      SetTile(P, P->CursorX, P->CursorY, (GetTile(P, P->CursorX, P->CursorY)+1)%BLOCK_BLUE);
+    if(P->KeyNew[KEY_BACK]) {
+      SetTile(P, P->CursorX, P->CursorY, BLOCK_EMPTY);
+      SetTile(P, P->CursorX+1, P->CursorY, BLOCK_EMPTY);
+    }
+    return;
+  }
 
   // Look for matches
   struct MatchRow *FirstMatch = NULL, *CurMatch = NULL;

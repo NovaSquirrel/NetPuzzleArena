@@ -67,6 +67,7 @@ struct Playfield {
   int Width, Height;
   int Rise;
   int CursorX, CursorY;
+  int Paused;
   int KeyDown[KEY_COUNT];
   int KeyLast[KEY_COUNT];
   int KeyNew[KEY_COUNT];
