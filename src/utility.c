@@ -1,5 +1,8 @@
 #include "puzzle.h"
 
+int DirX[] = {1, 1, 0, -1, -1, -1, 0, 1};
+int DirY[] = {0, 1, 1, 1, 0, -1, -1, -1};
+
 void SDL_MessageBox(int Type, const char *Title, SDL_Window *Window, const char *fmt, ...) {
   va_list argp;
   va_start(argp, fmt);

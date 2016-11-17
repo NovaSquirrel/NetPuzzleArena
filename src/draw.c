@@ -1,0 +1,54 @@
+#include "puzzle.h"
+
+void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
+  int VisualWidth = P->Width * TILE_W;
+  int VisualHeight = (P->Height-1) * TILE_H;
+  int Rise = P->Rise * (TILE_H / 16);
+
+  // border
+  SDL_SetRenderDrawColor(ScreenRenderer, 0, 0, 0, 255);
+  SDL_Rect BorderRectangle = {DrawX-1, DrawY-1, VisualWidth + 2, VisualHeight + 2};
+  SDL_RenderDrawRect(ScreenRenderer, &BorderRectangle);
+
+  SDL_Rect ClipRectangle = {DrawX, DrawY, P->Width * TILE_W, (P->Height-1) * TILE_H};
+  SDL_RenderSetClipRect(ScreenRenderer, &ClipRectangle);
+
+  for(int y=0; y<VisualHeight; y++) {
+    int Value = (float)y / VisualHeight * 255;
+    SDL_SetRenderDrawColor(ScreenRenderer, Value, Value, Value, 255);
+    SDL_RenderDrawLine(ScreenRenderer, DrawX, DrawY+y, DrawX+VisualWidth-1, DrawY+y);
+  }
+
+  // Draw tiles
+  for(int x=0; x<P->Width; x++)
+    for(int y=0; y<P->Height; y++) {
+      int Tile = P->Playfield[P->Width * y + x];
+      blit(TileSheet, ScreenRenderer, TILE_W*Tile, 0, DrawX+x*TILE_W, DrawY+y*TILE_H-Rise, TILE_W, TILE_H);
+    }
+  // Draw exploding blocks
+  for(struct MatchRow *Heads = P->Match; Heads; Heads=Heads->Next) {
+    int SourceY = Heads->Timer1?TILE_H:TILE_H*2;
+    for(struct MatchRow *Match = Heads; Match; Match=Match->Child) {
+      for(int i=0; i<Match->DisplayWidth; i++)
+        blit(TileSheet, ScreenRenderer, TILE_W*Match->Color, SourceY, DrawX+(Match->DisplayX+i)*TILE_W, DrawY+Match->Y*TILE_H-Rise, TILE_W, TILE_H);
+    }
+  }
+
+  // Draw swapping tiles
+  if(P->SwapTimer) {
+    int Offset = (4-P->SwapTimer)*4;
+    blit(TileSheet, ScreenRenderer, TILE_W*P->SwapColor1, 0, DrawX+P->CursorX*TILE_W+Offset, DrawY+P->CursorY*TILE_H-Rise, TILE_W, TILE_H);
+    blit(TileSheet, ScreenRenderer, TILE_W*P->SwapColor2, 0, DrawX+(P->CursorX+1)*TILE_W-Offset, DrawY+P->CursorY*TILE_H-Rise, TILE_W, TILE_H);
+  }
+
+  // Draw the cursor
+  if(P->GameType == FRENZY) {
+    blit(TileSheet, ScreenRenderer, 0, TILE_H, DrawX+P->CursorX*TILE_W, DrawY+P->CursorY*TILE_H-Rise, TILE_W, TILE_H);
+    blit(TileSheet, ScreenRenderer, 0, TILE_H, DrawX+(P->CursorX+1)*TILE_W, DrawY+P->CursorY*TILE_H-Rise, TILE_W, TILE_H);
+  } else if(P->GameType == AVALANCHE) {
+    blit(TileSheet, ScreenRenderer, TILE_W*P->SwapColor1, 0, DrawX+P->CursorX*TILE_W, DrawY+P->CursorY*TILE_H-Rise, TILE_W, TILE_H);
+    blit(TileSheet, ScreenRenderer, TILE_W*P->SwapColor2, 0, DrawX+(P->CursorX+DirX[P->Direction])*TILE_W, DrawY+(P->CursorY+DirY[P->Direction])*TILE_H-Rise, TILE_W, TILE_H);
+  }
+
+  SDL_RenderSetClipRect(ScreenRenderer, NULL);
+}

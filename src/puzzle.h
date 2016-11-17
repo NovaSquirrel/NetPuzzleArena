@@ -1,6 +1,11 @@
 #ifndef PUZZLE_HEADER
 #define PUZZLE_HEADER
 #define NO_STDIO_REDIRECT
+
+#define ENABLE_AUDIO 1
+#define ENABLE_SOUNDS 1
+//#define ENABLE_MUSIC 1
+
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
@@ -8,8 +13,12 @@
 #include <ctype.h>
 #include <dirent.h>
 #include <stdarg.h>
+#include <time.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#ifdef ENABLE_AUDIO
+#include <SDL2/SDL_mixer.h>
+#endif
 #include <SDL2/SDL_ttf.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -19,6 +28,35 @@ extern int ScreenWidth, ScreenHeight;
 extern SDL_Window *window;
 extern SDL_Renderer *ScreenRenderer;
 extern int retraces;
+extern int TILE_W, TILE_H;
+extern SDL_Renderer *ScreenRenderer;
+extern SDL_Texture *TileSheet;
+extern int DirX[];
+extern int DirY[];
+
+#ifdef ENABLE_AUDIO
+extern Mix_Chunk *SampleSwap, *SampleDrop, *SampleDisappear, *SampleMove;
+#endif
+
+enum GameTypes {
+  FRENZY,
+  AVALANCHE,
+  PILLARS,
+  DICE_MATCH,
+  REVERSI_BALL,
+  COOKIE,
+};
+
+enum Directions {
+  EAST,
+  SOUTHEAST,
+  SOUTH,
+  SOUTHWEST,
+  WEST,
+  NORTHWEST,
+  NORTH,
+  NORTHEAST
+};
 
 enum GameKey {
   KEY_LEFT,
@@ -28,9 +66,13 @@ enum GameKey {
   KEY_OK,
   KEY_BACK,
   KEY_PAUSE,
-  KEY_SWAP,
+  KEY_ACTION,
+  KEY_ROTATE_L, // counter clockwise
+  KEY_ROTATE_R, // clockwise
   KEY_LIFT,
-  KEY_COUNT
+  KEY_COUNT,
+
+  KEY_SWAP = KEY_ACTION
 };
 
 enum BlockColor {
@@ -45,11 +87,20 @@ enum BlockColor {
   BLOCK_DISABLED
 };
 
-struct FallingData {
-  int IsFalling; // if 1, currently falling
-  int Timer;     // if nonzero, wait this amount of time before bringing blocks down
-  int SwapLock;  // disable swaps above this height
-  int GroundLevel;
+enum GameplayOptions {
+  SWAP_INSTANTLY = 1,
+  LIFT_WHILE_CLEARING = 2,
+  PULL_BLOCK_HORIZONTAL = 4
+};
+
+struct FallingChunk {
+  int Timer, X, Y, Height;
+  struct FallingChunk *Next;
+};
+
+struct GarbageSlab {
+  int X, Y, Width, Height;
+  struct GarbageSlab *Next;
 };
 
 struct MatchRow {
@@ -64,17 +115,29 @@ struct MatchRow {
 };
 
 struct Playfield {
+  int GameType;
   int Width, Height;
-  int Rise;
   int CursorX, CursorY;
   int Paused;
+  uint32_t Flags;
   int KeyDown[KEY_COUNT];
   int KeyLast[KEY_COUNT];
   int KeyNew[KEY_COUNT];
   int KeyRepeat[KEY_COUNT];
   int *Playfield;
+
+  // Frenzy
+  int Rise;
+  int SwapTimer, SwapColor1, SwapColor2;
   struct MatchRow *Match;
-  struct FallingData *FallingColumns;
+  struct FallingChunk *FallingData;
+
+  // Falling blocks
+  int FallTimer;
+  int LockTimer;
+  int Active;
+  int Direction; // for Avalanche
+  int SwapColor3; // for pillars
 };
 
 void SDL_MessageBox(int Type, const char *Title, SDL_Window *Window, const char *fmt, ...);
@@ -91,3 +154,12 @@ void blitfull(SDL_Texture* SrcBmp, SDL_Renderer* DstBmp, int DestX, int DestY);
 void UpdatePlayfield(struct Playfield *P);
 int GetTile(struct Playfield *P, int X, int Y);
 void SetTile(struct Playfield *P, int X, int Y, int Value);
+void RandomizeRow(struct Playfield *P, int y);
+
+int RandomTileColor(struct Playfield *P);
+void UpdatePuzzleFrenzy(struct Playfield *P);
+void UpdateAvalanche(struct Playfield *P);
+void UpdatePillars(struct Playfield *P);
+void UpdateCookie(struct Playfield *P);
+void UpdateReversiBall(struct Playfield *P);
+void UpdateDiceMatch(struct Playfield *P);
