@@ -1,4 +1,23 @@
+/*
+ * Net Puzzle Arena
+ *
+ * Copyright (C) 2016 NovaSquirrel
+ *
+ * This program is free software: you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #include "puzzle.h"
+#include <math.h>
 
 int DirX[] = {1, 1, 0, -1, -1, -1, 0, 1};
 int DirY[] = {0, 1, 1, 1, 0, -1, -1, -1};
@@ -10,6 +29,30 @@ void SDL_MessageBox(int Type, const char *Title, SDL_Window *Window, const char 
   vsprintf(Buffer, fmt, argp);
   SDL_ShowSimpleMessageBox(Type, Title, Buffer, Window);
   va_end(argp);
+}
+
+int Random(int Choices) {
+  int Out, Mask;
+  if(Choices == 2)
+    return rand()&1;
+  else if(Choices <= 4)
+    Mask = 3;
+  else if(Choices <= 8)
+    Mask = 7;
+  else if(Choices <= 16)
+    Mask = 15;
+  else if(Choices <= 32)
+    Mask = 31;
+  else if(Choices <= 64)
+    Mask = 63;
+  else
+    return rand()%Choices;
+
+  while(1) {
+    Out = rand()&Mask;
+    if(Out < Choices)
+      return Out;
+  }
 }
 
 void strlcpy(char *Destination, const char *Source, int MaxLength) {

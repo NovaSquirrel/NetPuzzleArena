@@ -1,3 +1,21 @@
+/*
+ * Net Puzzle Arena
+ *
+ * Copyright (C) 2016 NovaSquirrel
+ *
+ * This program is free software: you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #include "puzzle.h"
 int TILE_W = 16, TILE_H = 16;
 int ScreenWidth = 320, ScreenHeight = 240;
@@ -19,6 +37,8 @@ int DoubleSize = 0, NoAcceleration = 0;
 #endif
 
 void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY);
+void SetGameDefaults(struct Playfield *P, int Game);
+void InitPlayfield(struct Playfield *P);
 
 int main(int argc, char *argv[]) {
   // read parameters
@@ -98,12 +118,8 @@ int main(int argc, char *argv[]) {
 
   struct Playfield Player1;
   memset(&Player1, 0, sizeof(struct Playfield));
-  Player1.GameType = AVALANCHE;
-  Player1.Width = 6;
-  Player1.Height = 13;
-  Player1.Playfield = calloc(Player1.Width * Player1.Height, sizeof(int));
-  for(int j=8; j<13; j++)
-    RandomizeRow(&Player1, j);
+  SetGameDefaults(&Player1, FRENZY);
+  InitPlayfield(&Player1);
 
   SDL_SetRenderDrawColor(ScreenRenderer, 128, 128, 128, 255);
   SDL_RenderClear(ScreenRenderer); 
@@ -134,7 +150,7 @@ int main(int argc, char *argv[]) {
     }
 
     UpdatePlayfield(&Player1);
-    DrawPlayfield(&Player1, 112, 24);
+    DrawPlayfield(&Player1, (ScreenWidth/2)-(Player1.Width*TILE_W)/2, (ScreenHeight/2)-((Player1.Height-1)*TILE_H)/2);
 
     SDL_RenderPresent(ScreenRenderer);
     if(retraces % 3)

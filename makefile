@@ -1,4 +1,4 @@
-objlist := puzzle utility playfield draw frenzy avalanche
+objlist := puzzle utility playfield draw frenzy avalanche reversiball
 program_title = puzzle
  
 CC := gcc

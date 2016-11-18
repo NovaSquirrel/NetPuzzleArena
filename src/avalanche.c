@@ -7,81 +7,12 @@ int GetTile2(struct Playfield *P, int x, int y) {
   return GetTile(P, P->CursorX + DirX[P->Direction] + x, P->CursorY + DirY[P->Direction] + y);
 }
 
-int CountConnected(struct Playfield *P, int X, int Y, int *Used) {
-  int Color = GetTile(P, X, Y);
-  int Sum = 1;
-  Used[P->Width * Y + X] = 1;
-
-  if(X-1 >= 0 && !Used[P->Width * Y + (X-1)] && GetTile(P, X-1, Y) == Color)
-    Sum += CountConnected(P, X-1, Y, Used);
-  if(X+1 <= P->Width-1 && !Used[P->Width * Y + (X+1)] && GetTile(P, X+1, Y) == Color) 
-    Sum += CountConnected(P, X+1, Y, Used);
-  if(Y-1 >= 0 && !Used[P->Width * (Y-1) + X] && GetTile(P, X, Y-1) == Color) 
-    Sum += CountConnected(P, X, Y-1, Used);
-  if(Y+1 <= P->Height-2 && !Used[P->Width * (Y+1) + X] && GetTile(P, X, Y+1) == Color)
-    Sum += CountConnected(P, X, Y+1, Used);
-
-  return Sum;
-}
-
-void ClearConnected(struct Playfield *P, int X, int Y) {
-  int Color = GetTile(P, X, Y);
-  SetTile(P, X, Y, BLOCK_EMPTY);
-
-  if(X-1 >= 0 && GetTile(P, X-1, Y) == Color)
-    ClearConnected(P, X-1, Y);
-  if(X+1 <= P->Width-1 && GetTile(P, X+1, Y) == Color) 
-    ClearConnected(P, X+1, Y);
-  if(Y-1 >= 0 && GetTile(P, X, Y-1) == Color) 
-    ClearConnected(P, X, Y-1);
-  if(Y+1 <= P->Height-2 && GetTile(P, X, Y+1) == Color)
-    ClearConnected(P, X, Y+1);
-}
-
-int MakeBlocksFall(struct Playfield *P) {
-  int BlocksFell = 0;
-  for(int x=0; x<P->Width; x++)
-    for(int y=P->Height-2; y; y--)
-      if(!GetTile(P, x, y) && GetTile(P, x, y-1)) {
-        SetTile(P, x, y, GetTile(P, x, y-1));
-        SetTile(P, x, y-1, BLOCK_EMPTY);
-        BlocksFell = 1;
-      }
-  return BlocksFell;
-}
-
-int TestBlocksFall(struct Playfield *P) {
-  for(int x=0; x<P->Width; x++)
-    for(int y=P->Height-2; y; y--)
-      if(!GetTile(P, x, y) && GetTile(P, x, y-1)) {
-        return 1;
-      }
-  return 0;
-}
-
 void UpdateAvalanche(struct Playfield *P) {
   int GoDown = 0;
 
   if(P->SwapColor1 == BLOCK_EMPTY && P->SwapColor2 == BLOCK_EMPTY) {
-    if(MakeBlocksFall(P))
+    if(ClearAvalancheStyle(P))
       return;
-
-    // look for groups and clear them
-    int Used[P->Width * P->Height];
-    memset(Used, 0, sizeof(Used));    
-    for(int y=0; y<P->Height; y++)
-      for(int x=0; x<P->Width; x++) {
-        if(!GetTile(P, x, y))
-          continue;
-
-        int Sum = CountConnected(P, x, y, Used);
-        if(Sum >= 4)
-          ClearConnected(P, x, y);
-      }
-
-    if(TestBlocksFall(P))
-      return;
-
 
     P->SwapColor1 = RandomTileColor(P);
     P->SwapColor2 = RandomTileColor(P);

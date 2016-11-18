@@ -1,3 +1,21 @@
+/*
+ * Net Puzzle Arena
+ *
+ * Copyright (C) 2016 NovaSquirrel
+ *
+ * This program is free software: you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #ifndef PUZZLE_HEADER
 #define PUZZLE_HEADER
 #define NO_STDIO_REDIRECT
@@ -83,6 +101,10 @@ enum BlockColor {
   BLOCK_CYAN,
   BLOCK_PURPLE,
   BLOCK_BLUE,
+  BLOCK_EXTRA1,
+  BLOCK_EXTRA2,
+  BLOCK_METAL,
+  BLOCK_GARBAGE,
   BLOCK_GRAY,
   BLOCK_DISABLED
 };
@@ -138,6 +160,10 @@ struct Playfield {
   int Active;
   int Direction; // for Avalanche
   int SwapColor3; // for pillars
+
+  // Game rules
+  int MinMatchSize; // how many matching tiles are needed
+  int ColorCount;
 };
 
 void SDL_MessageBox(int Type, const char *Title, SDL_Window *Window, const char *fmt, ...);
@@ -163,3 +189,10 @@ void UpdatePillars(struct Playfield *P);
 void UpdateCookie(struct Playfield *P);
 void UpdateReversiBall(struct Playfield *P);
 void UpdateDiceMatch(struct Playfield *P);
+int Random(int Choices);
+
+int CountConnected(struct Playfield *P, int X, int Y, int *Used);
+void ClearConnected(struct Playfield *P, int X, int Y);
+int MakeBlocksFall(struct Playfield *P);
+int TestBlocksFall(struct Playfield *P);
+int ClearAvalancheStyle(struct Playfield *P);

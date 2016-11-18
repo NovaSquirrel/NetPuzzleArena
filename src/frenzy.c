@@ -1,3 +1,21 @@
+/*
+ * Net Puzzle Arena
+ *
+ * Copyright (C) 2016 NovaSquirrel
+ *
+ * This program is free software: you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #include "puzzle.h"
 
 void UpdatePuzzleFrenzy(struct Playfield *P) {
@@ -72,131 +90,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
     return;
   }
 
-  // Look for matches
-  struct MatchRow *FirstMatch = NULL, *CurMatch = NULL;
-  int Used[P->Width][P->Height]; 
-  memset(Used, 0, sizeof(Used));
-  for(int y=0; y<P->Height-1; y++)
-    for(int x=0; x<P->Width; x++) {
-      int Horiz = 0, Vert = 0, Color = GetTile(P, x, y);
-      if(!Color || Color==BLOCK_DISABLED || IsFalling[x][y])
-        continue;
-
-      while((x+Horiz+1 < P->Width && GetTile(P, x+Horiz+1, y) == Color) &&
-            !IsFalling[x+Horiz+1][y])
-        Horiz++;
-      while(y+Vert+1 < P->Height-1 && !Used[x][y+Vert+1] && GetTile(P, x, y+Vert+1) == Color)
-        Vert++;
-
-      if(Vert >= 2) {
-        for(int i=0; i<=Vert; i++)
-          Used[x][y+i] = 1;
-      }
-      if(Horiz >= 2) {
-        for(int i=0; i<=Horiz; i++)
-          Used[x+i][y] = 1;
-        Used[x][y] = Horiz+1; // write the width
-        x+=Horiz;
-      }
-    }
-
-  // create match structs for the matches that are found
-  for(int y=0; y<P->Height-1; y++)
-    for(int x=0; x<P->Width; x++) {
-      if(Used[x][y]) {
-        struct MatchRow *Match = (struct MatchRow*)malloc(sizeof(struct MatchRow));
-        int Width = Used[x][y];
-        Match->Color = GetTile(P, x, y);
-        Match->X = x;
-        Match->Y = y;
-        Match->DisplayX = x;
-        Match->DisplayWidth = Width;
-        Match->Width = Width;
-        Match->Child = NULL;
-        Match->Next = NULL;
-        Match->Timer1 = 0;
-        if(!FirstMatch)
-          Match->Timer2 = 26;
-        else
-          Match->Timer2 = 10;
-
-        for(int i=0; i<Width; i++)
-          SetTile(P, x+i, y, BLOCK_DISABLED);
-        if(!FirstMatch)
-          FirstMatch = Match;
-        if(CurMatch)
-          CurMatch->Child = Match;
-        CurMatch = Match;
-
-        x+=Used[x][y]-1;
-      }
-    }
-  if(FirstMatch) {
-    if(!P->Match)
-      P->Match = FirstMatch;
-    else {
-      FirstMatch->Next = P->Match;
-      P->Match = FirstMatch;
-    }
-    FirstMatch->Timer1 = 46;
-  }
-  
-  // Make blocks explode
-  for(struct MatchRow *Match = P->Match; Match; Match=Match->Next) {
-    // Stay white for a moment
-    if(Match->Timer1) {
-      Match->Timer1--;
-      continue;
-    }
-
-    // Start erasing blocks
-    struct MatchRow *Last = Match;
-    while(!Last->DisplayWidth)
-      Last = Last->Child;
-
-    Last->Timer2--;
-    if(!Last->Timer2) {
-      Last->Timer2 = 10;
-      Last->DisplayX++;
-      Last->DisplayWidth--;
-#ifdef ENABLE_AUDIO
-      Mix_PlayChannel(-1, SampleDisappear, 0);
-#endif
-
-      // did the last one finish clearing out?
-      if(!Last->DisplayWidth && !Last->Child) {
-
-        // adjust pointers
-        if(P->Match == Match) {
-          P->Match = Match->Next;
-        } else {
-          struct MatchRow *Find = P->Match;
-          while(Find->Next != Match)
-            Find = Find->Next;
-          Find->Next = Match->Next;
-        }
-
-        // free, and also erase all those blocks
-        for(Last = Match; Last;) {
-          struct MatchRow *Next = Last->Child;
-          free(Last);
-          Last = Next;
-        }
-      }
-    }
-  }
-
-  // Change disabled blocks back to regular ones
-  memset(Used, 0, sizeof(Used));
-  for(struct MatchRow *Heads = P->Match; Heads; Heads=Heads->Next)
-    for(struct MatchRow *Match = Heads; Match; Match=Match->Child)
-      for(int i=0; i<Match->Width; i++)
-        Used[Match->X+i][Match->Y] = 1;
-  for(int x=0; x<P->Width; x++)
-    for(int y=0; y<P->Height; y++)
-      if(GetTile(P, x, y) == BLOCK_DISABLED && !Used[x][y]
-      && (!P->SwapTimer || (y != P->CursorY && (x != P->CursorX && x != P->CursorX+1))))
-        SetTile(P, x, y, BLOCK_EMPTY);
+/////////////////// GRAVITY ///////////////////
 
   // gravity
   for(int x=0; x< P->Width; x++) {
@@ -287,6 +181,138 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
   if(PlayDropSound)
     Mix_PlayChannel(-1, SampleDrop, 0);
 #endif
+
+/////////////////// MATCHES ///////////////////
+
+  // Look for matches
+  struct MatchRow *FirstMatch = NULL, *CurMatch = NULL;
+  int Used[P->Width][P->Height]; 
+  memset(Used, 0, sizeof(Used));
+  for(int y=0; y<P->Height-1; y++)
+    for(int x=0; x<P->Width; x++) {
+      int Horiz = 0, Vert = 0, Color = GetTile(P, x, y);
+      if(!Color || Color==BLOCK_DISABLED || IsFalling[x][y])
+        continue;
+      if(y < P->Height-2 && !GetTile(P, x, y+1))
+        continue;
+
+      while((x+Horiz+1 < P->Width && GetTile(P, x+Horiz+1, y) == Color) &&
+            !IsFalling[x+Horiz+1][y] && (y!=P->Height-2 || GetTile(P, x+Horiz+1, y+1)))
+        Horiz++;
+      while(y+Vert+1 < P->Height-1 && !Used[x][y+Vert+1] && GetTile(P, x, y+Vert+1) == Color)
+        Vert++;
+
+      if(Vert >= 2) {
+        for(int i=0; i<=Vert; i++)
+          Used[x][y+i] = 1;
+      }
+      if(Horiz >= 2) {
+        for(int i=0; i<=Horiz; i++)
+          Used[x+i][y] = 1;
+        Used[x][y] = Horiz+1; // write the width
+        x+=Horiz;
+      }
+    }
+
+  // create match structs for the matches that are found
+  for(int y=0; y<P->Height-1; y++)
+    for(int x=0; x<P->Width; x++) {
+      if(Used[x][y]) {
+        struct MatchRow *Match = (struct MatchRow*)malloc(sizeof(struct MatchRow));
+        int Width = Used[x][y];
+        Match->Color = GetTile(P, x, y);
+        Match->X = x;
+        Match->Y = y;
+        Match->DisplayX = x;
+        Match->DisplayWidth = Width;
+        Match->Width = Width;
+        Match->Child = NULL;
+        Match->Next = NULL;
+        Match->Timer1 = 0;
+        if(!FirstMatch)
+          Match->Timer2 = 26;
+        else
+          Match->Timer2 = 10;
+
+        for(int i=0; i<Width; i++)
+          SetTile(P, x+i, y, BLOCK_DISABLED);
+        if(!FirstMatch)
+          FirstMatch = Match;
+        if(CurMatch)
+          CurMatch->Child = Match;
+        CurMatch = Match;
+
+        x+=Used[x][y]-1;
+      }
+    }
+  if(FirstMatch) {
+    if(!P->Match)
+      P->Match = FirstMatch;
+    else {
+      FirstMatch->Next = P->Match;
+      P->Match = FirstMatch;
+    }
+    FirstMatch->Timer1 = 46;
+  }
+  
+  // Do animation for clearing blocks
+  for(struct MatchRow *Match = P->Match; Match; Match=Match->Next) {
+    // Stay white for a moment
+    if(Match->Timer1) {
+      Match->Timer1--;
+      continue;
+    }
+
+    // Start erasing blocks
+    struct MatchRow *Last = Match;
+    while(!Last->DisplayWidth)
+      Last = Last->Child;
+
+    Last->Timer2--;
+    if(!Last->Timer2) {
+      Last->Timer2 = 10;
+      Last->DisplayX++;
+      Last->DisplayWidth--;
+#ifdef ENABLE_AUDIO
+      Mix_PlayChannel(-1, SampleDisappear, 0);
+#endif
+
+      // did the last one finish clearing out?
+      if(!Last->DisplayWidth && !Last->Child) {
+
+        // adjust pointers
+        if(P->Match == Match) {
+          P->Match = Match->Next;
+        } else {
+          struct MatchRow *Find = P->Match;
+          while(Find->Next != Match)
+            Find = Find->Next;
+          Find->Next = Match->Next;
+        }
+
+        // free, and also erase all those blocks
+        for(Last = Match; Last;) {
+          struct MatchRow *Next = Last->Child;
+          free(Last);
+          Last = Next;
+        }
+      }
+    }
+  }
+
+  // Change disabled blocks back to regular ones
+  memset(Used, 0, sizeof(Used));
+  for(struct MatchRow *Heads = P->Match; Heads; Heads=Heads->Next)
+    for(struct MatchRow *Match = Heads; Match; Match=Match->Child)
+      for(int i=0; i<Match->Width; i++)
+        Used[Match->X+i][Match->Y] = 1;
+  for(int x=0; x<P->Width; x++)
+    for(int y=0; y<P->Height; y++)
+      if(GetTile(P, x, y) == BLOCK_DISABLED && !Used[x][y]
+      && (!P->SwapTimer || (y != P->CursorY && (x != P->CursorX && x != P->CursorX+1))))
+        SetTile(P, x, y, BLOCK_EMPTY);
+
+/////////////////// RISING ///////////////////
 
   // Handle rising
   if(!(retraces & 15))
