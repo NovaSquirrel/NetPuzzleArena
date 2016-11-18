@@ -94,8 +94,10 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 
   // Look for matches
   struct MatchRow *FirstMatch = NULL, *CurMatch = NULL;
-  int Used[P->Width][P->Height]; 
+  int Used[P->Width][P->Height];  // horizontal
+  int UsedV[P->Width][P->Height]; // vertical
   memset(Used, 0, sizeof(Used));
+  memset(UsedV, 0, sizeof(UsedV));
   for(int y=0; y<P->Height-1; y++)
     for(int x=0; x<P->Width; x++) {
       int Horiz = 0, Vert = 0, Color = GetTile(P, x, y);
@@ -104,30 +106,33 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
       if(y < P->Height-2 && !GetTile(P, x, y+1))
         continue;
 
-      while((x+Horiz+1 < P->Width && GetTile(P, x+Horiz+1, y) == Color) &&
-            !IsFalling[x+Horiz+1][y] && (y!=P->Height-2 || GetTile(P, x+Horiz+1, y+1)))
-        Horiz++;
-      while(y+Vert+1 < P->Height-1 && !Used[x][y+Vert+1] && GetTile(P, x, y+Vert+1) == Color)
-        Vert++;
+      if(!Used[x][y])
+        while((x+Horiz+1 < P->Width && GetTile(P, x+Horiz+1, y) == Color) &&
+              !IsFalling[x+Horiz+1][y] && (y!=P->Height-2 || GetTile(P, x+Horiz+1, y+1)))
+          Horiz++;
+      if(!UsedV[x][y])
+        while(y+Vert+1 < P->Height-1 && !UsedV[x][y+Vert+1] && GetTile(P, x, y+Vert+1) == Color)
+          Vert++;
 
-      if(Vert >= 2) {
+      if(Vert >= P->MinMatchSize-1) {
         for(int i=0; i<=Vert; i++)
-          Used[x][y+i] = 1;
+          UsedV[x][y+i] = 1;
       }
-      if(Horiz >= 2) {
+      if(Horiz >= P->MinMatchSize-1) {
         for(int i=0; i<=Horiz; i++)
           Used[x+i][y] = 1;
         Used[x][y] = Horiz+1; // write the width
-        x+=Horiz;
       }
     }
 
   // create match structs for the matches that are found
   for(int y=0; y<P->Height-1; y++)
     for(int x=0; x<P->Width; x++) {
-      if(Used[x][y]) {
+      if(Used[x][y] || UsedV[x][y]) {
         struct MatchRow *Match = (struct MatchRow*)malloc(sizeof(struct MatchRow));
         int Width = Used[x][y];
+        if(!Width)
+          Width = 1;
         Match->Color = GetTile(P, x, y);
         Match->X = x;
         Match->Y = y;
@@ -150,7 +155,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
           CurMatch->Child = Match;
         CurMatch = Match;
 
-        x+=Used[x][y]-1;
+        x+=Width-1;
       }
     }
   if(FirstMatch) {
