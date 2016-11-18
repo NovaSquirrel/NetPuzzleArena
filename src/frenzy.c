@@ -154,6 +154,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
         SetTile(P, F->X, y, GetTile(P, F->X, y-1));
       SetTile(P, F->X, F->Y, BLOCK_EMPTY);
       F->Y++;
+      IsFalling[F->X][F->Y] = 1;
     } else if(ColorAtBottom == BLOCK_DISABLED) {
       F = Next;
       continue;
