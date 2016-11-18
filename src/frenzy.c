@@ -90,99 +90,6 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
     return;
   }
 
-/////////////////// GRAVITY ///////////////////
-
-  // gravity
-  for(int x=0; x< P->Width; x++) {
-    for(int y=0; y<P->Height-1; y++) {
-      int Color = GetTile(P, x, y);
-      if(!Color || Color == BLOCK_DISABLED || IsFalling[x][y])
-        continue;
-
-      // find the bottom of this stack
-      int Bottom = y+1;
-      while(Bottom < P->Height-1) {
-        int Color2 = GetTile(P, x, Bottom);
-        if(!Color2 || Color2 == BLOCK_DISABLED || IsFalling[x][Bottom])
-          break;
-        Bottom++;
-      }
-
-      if(Bottom == P->Height-1)
-        break;
-      if(GetTile(P, x, Bottom) != BLOCK_DISABLED) {
-        struct FallingChunk *Fall = (struct FallingChunk*)malloc(sizeof(struct FallingChunk));
-        Fall->X = x;
-        Fall->Y = y;
-        Fall->Height = Bottom-y;
-        Fall->Timer = 12;
-        Fall->Next = NULL;
-
-        // add to the list of falling chunks
-        if(!P->FallingData)
-          P->FallingData = Fall;
-        else {
-          Fall->Next = P->FallingData;
-          P->FallingData = Fall;
-        }
-      }
-
-      y = Bottom-1;
-    }
-  }
-
-  // move falling things down
-  int PlayDropSound = 0;
-  for(struct FallingChunk *F = P->FallingData; F; ) {
-    int Free = 0;
-    struct FallingChunk *Next = F->Next;
-
-    if(F->Timer) {
-      F->Timer--;
-      F = Next;
-      continue;
-    }
-
-    // if you're at the bottom, stop falling
-    int ColorAtBottom = GetTile(P, F->X, F->Y+F->Height);
-
-    if(F->Y + F->Height >= P->Height-1) {
-      PlayDropSound = 1;
-      Free = 1;
-    } else if(ColorAtBottom == BLOCK_EMPTY){
-      for(int y = F->Y+F->Height; y > F->Y; y--)
-        SetTile(P, F->X, y, GetTile(P, F->X, y-1));
-      SetTile(P, F->X, F->Y, BLOCK_EMPTY);
-      F->Y++;
-      IsFalling[F->X][F->Y] = 1;
-    } else if(ColorAtBottom == BLOCK_DISABLED) {
-      F = Next;
-      continue;
-    } else if(ColorAtBottom && !IsFalling[F->X][F->Y + F->Height]) {
-      PlayDropSound = 1;
-      Free = 1;
-    }
-
-    // free up the falling chunk and update pointers
-    if(Free) {
-      if(P->FallingData == F)
-        P->FallingData = F->Next;
-      else {
-        struct FallingChunk *Prev = P->FallingData;
-        while(Prev->Next != F)
-          Prev = Prev->Next;
-        Prev->Next = F->Next;
-      }
-    free(F);
-    }
-
-    F = Next;
-  }
-#ifdef ENABLE_AUDIO
-  if(PlayDropSound)
-    Mix_PlayChannel(-1, SampleDrop, 0);
-#endif
-
 /////////////////// MATCHES ///////////////////
 
   // Look for matches
@@ -312,6 +219,98 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
       if(GetTile(P, x, y) == BLOCK_DISABLED && !Used[x][y]
       && (!P->SwapTimer || (y != P->CursorY && (x != P->CursorX && x != P->CursorX+1))))
         SetTile(P, x, y, BLOCK_EMPTY);
+
+/////////////////// GRAVITY ///////////////////
+
+  // gravity
+  for(int x=0; x< P->Width; x++) {
+    for(int y=0; y<P->Height-1; y++) {
+      int Color = GetTile(P, x, y);
+      if(!Color || Color == BLOCK_DISABLED || IsFalling[x][y])
+        continue;
+
+      // find the bottom of this stack
+      int Bottom = y+1;
+      while(Bottom < P->Height-1) {
+        int Color2 = GetTile(P, x, Bottom);
+        if(!Color2 || Color2 == BLOCK_DISABLED || IsFalling[x][Bottom])
+          break;
+        Bottom++;
+      }
+
+      if(Bottom == P->Height-1)
+        break;
+      if(GetTile(P, x, Bottom) != BLOCK_DISABLED) {
+        struct FallingChunk *Fall = (struct FallingChunk*)malloc(sizeof(struct FallingChunk));
+        Fall->X = x;
+        Fall->Y = y;
+        Fall->Height = Bottom-y;
+        Fall->Timer = 12;
+        Fall->Next = NULL;
+
+        // add to the list of falling chunks
+        if(!P->FallingData)
+          P->FallingData = Fall;
+        else {
+          Fall->Next = P->FallingData;
+          P->FallingData = Fall;
+        }
+      }
+
+      y = Bottom-1;
+    }
+  }
+
+  // move falling things down
+  int PlayDropSound = 0;
+  for(struct FallingChunk *F = P->FallingData; F; ) {
+    int Free = 0;
+    struct FallingChunk *Next = F->Next;
+
+    if(F->Timer) {
+      F->Timer--;
+      F = Next;
+      continue;
+    }
+
+    // if you're at the bottom, stop falling
+    int ColorAtBottom = GetTile(P, F->X, F->Y+F->Height);
+
+    if(F->Y + F->Height >= P->Height-1) {
+      PlayDropSound = 1;
+      Free = 1;
+    } else if(ColorAtBottom == BLOCK_EMPTY){
+      for(int y = F->Y+F->Height; y > F->Y; y--)
+        SetTile(P, F->X, y, GetTile(P, F->X, y-1));
+      SetTile(P, F->X, F->Y, BLOCK_EMPTY);
+      F->Y++;
+    } else if(ColorAtBottom == BLOCK_DISABLED) {
+      F = Next;
+      continue;
+    } else if(ColorAtBottom && !IsFalling[F->X][F->Y + F->Height]) {
+      PlayDropSound = 1;
+      Free = 1;
+    }
+
+    // free up the falling chunk and update pointers
+    if(Free) {
+      if(P->FallingData == F)
+        P->FallingData = F->Next;
+      else {
+        struct FallingChunk *Prev = P->FallingData;
+        while(Prev->Next != F)
+          Prev = Prev->Next;
+        Prev->Next = F->Next;
+      }
+    free(F);
+    }
+
+    F = Next;
+  }
+#ifdef ENABLE_AUDIO
+  if(PlayDropSound)
+    Mix_PlayChannel(-1, SampleDrop, 0);
+#endif
 
 /////////////////// RISING ///////////////////
 
