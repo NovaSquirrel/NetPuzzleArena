@@ -321,9 +321,9 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 /////////////////// RISING ///////////////////
 
   // Handle rising
-  if(!(retraces & 15))
+  if(!P->Match && !(retraces & 15))
     P->Rise++;
-  if(P->KeyNew[KEY_LIFT])
+  if((!P->Match || P->Flags&LIFT_WHILE_CLEARING) && P->KeyNew[KEY_LIFT])
     P->Rise = 16;
   if(P->Rise >= 16) {
     // push playfield up
