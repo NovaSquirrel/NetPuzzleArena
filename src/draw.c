@@ -71,3 +71,26 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
 
   SDL_RenderSetClipRect(ScreenRenderer, NULL);
 }
+
+void DrawText(SDL_Texture* Font, int DestX, int DestY, int Flags, const char *fmt, ...) {
+  char Buffer[1024];
+  va_list args;
+  va_start(args, fmt);
+  vsnprintf(Buffer, sizeof(Buffer), fmt, args);
+  va_end(args);
+
+  int FontW, FontH;
+  SDL_QueryTexture(Font, NULL, NULL, &FontW, &FontH);
+
+  int BaseY = (Flags&TEXT_WHITE) ? FontH/2 : 0;
+
+  if(Flags & TEXT_CENTERED)
+    DestX -= strlen(Buffer)*8/2;
+
+  for(const char *Text = Buffer; *Text; Text++) {
+    char C = *Text - 0x20;
+    blit(Font, ScreenRenderer, (C&15)*8, BaseY+(C>>4)*8, DestX, DestY, 8, 8);
+    DestX += 8;
+  }
+
+}

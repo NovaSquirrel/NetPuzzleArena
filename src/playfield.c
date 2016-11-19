@@ -170,6 +170,10 @@ void UpdateCookie(struct Playfield *P) {
 
 }
 
+void UpdateStacker(struct Playfield *P) {
+
+}
+
 void UpdatePlayfield(struct Playfield *P) {
   // Update keys, do key repeat
   for(int i=0; i<KEY_COUNT; i++) {
@@ -205,6 +209,9 @@ void UpdatePlayfield(struct Playfield *P) {
       break;
     case COOKIE:
       UpdateCookie(P);
+      break;
+    case STACKER:
+      UpdateStacker(P);
       break;
   }
 }

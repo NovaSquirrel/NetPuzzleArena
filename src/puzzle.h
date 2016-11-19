@@ -63,6 +63,7 @@ enum GameTypes {
   DICE_MATCH,
   REVERSI_BALL,
   COOKIE,
+  STACKER,
 };
 
 enum Directions {
@@ -112,7 +113,8 @@ enum BlockColor {
 enum GameplayOptions {
   SWAP_INSTANTLY = 1,
   LIFT_WHILE_CLEARING = 2,
-  PULL_BLOCK_HORIZONTAL = 4
+  PULL_BLOCK_HORIZONTAL = 4,
+  MOUSE_CONTROL = 8
 };
 
 struct FallingChunk {
@@ -166,6 +168,11 @@ struct Playfield {
   int ColorCount;
 };
 
+enum TextDrawFlags {
+  TEXT_CENTERED = 1,
+  TEXT_WHITE = 2,
+};
+
 void SDL_MessageBox(int Type, const char *Title, SDL_Window *Window, const char *fmt, ...);
 void strlcpy(char *Destination, const char *Source, int MaxLength);
 SDL_Surface *SDL_LoadImage(const char *FileName, int Flags);
@@ -177,6 +184,7 @@ void blit(SDL_Texture* SrcBmp, SDL_Renderer* DstBmp, int SourceX, int SourceY, i
 void blitf(SDL_Texture* SrcBmp, SDL_Renderer* DstBmp, int SourceX, int SourceY, int DestX, int DestY, int Width, int Height, SDL_RendererFlip Flip);
 void blitz(SDL_Texture* SrcBmp, SDL_Renderer* DstBmp, int SourceX, int SourceY, int DestX, int DestY, int Width, int Height, int Width2, int Height2);
 void blitfull(SDL_Texture* SrcBmp, SDL_Renderer* DstBmp, int DestX, int DestY);
+void DrawText(SDL_Texture* Font, int DestX, int DestY, int Flags, const char *fmt, ...);
 void UpdatePlayfield(struct Playfield *P);
 int GetTile(struct Playfield *P, int X, int Y);
 void SetTile(struct Playfield *P, int X, int Y, int Value);
@@ -189,6 +197,7 @@ void UpdatePillars(struct Playfield *P);
 void UpdateCookie(struct Playfield *P);
 void UpdateReversiBall(struct Playfield *P);
 void UpdateDiceMatch(struct Playfield *P);
+void UpdateStacker(struct Playfield *P);
 int Random(int Choices);
 
 int CountConnected(struct Playfield *P, int X, int Y, int *Used);

@@ -24,6 +24,7 @@ SDL_Window *window = NULL;
 SDL_Renderer *ScreenRenderer = NULL;
 SDL_Texture *IconTexture = NULL;
 SDL_Texture *TileSheet = NULL;
+SDL_Texture *GameFont = NULL;
 SDL_Surface *IconSurface = NULL;
 SDL_Surface *WindowIcon = NULL;
 int quit = 0;
@@ -84,6 +85,19 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
+  ScreenRenderer = SDL_CreateRenderer(window, -1, NoAcceleration?0:SDL_RENDERER_ACCELERATED);
+
+  // set window icon
+  GameFont = LoadTexture("data/font.png", 0);
+  WindowIcon = SDL_LoadImage("data/icon.png", 0);
+  SDL_SetWindowIcon(window, WindowIcon);
+
+  TileSheet = LoadTexture(DoubleSize?"data/gfx2.png":"data/gfx.png", 0);
+  SDL_SetRenderDrawColor(ScreenRenderer, 0, 0, 0, 255);
+  SDL_RenderClear(ScreenRenderer); 
+  DrawText(GameFont, ScreenWidth/2, ScreenHeight/2, TEXT_CENTERED, "Initializing");
+  SDL_RenderPresent(ScreenRenderer);
+
 #ifdef ENABLE_AUDIO
   if( (Mix_Init(MIX_INIT_MODPLUG) & MIX_INIT_MODPLUG) != MIX_INIT_MODPLUG ) {
     SDL_MessageBox(SDL_MESSAGEBOX_ERROR, "Error", NULL, "SDL_mixer could not initialize! SDL_mixer Error: %s", Mix_GetError());
@@ -108,16 +122,9 @@ int main(int argc, char *argv[]) {
 #endif
 #endif
 
-  ScreenRenderer = SDL_CreateRenderer(window, -1, NoAcceleration?0:SDL_RENDERER_ACCELERATED);
-
-  // set window icon
-  WindowIcon = SDL_LoadImage("data/icon.png", 0);
-  SDL_SetWindowIcon(window, WindowIcon);
-
-  TileSheet = LoadTexture(DoubleSize?"data/gfx2.png":"data/gfx.png", 0);
-
   struct Playfield Player1;
   memset(&Player1, 0, sizeof(struct Playfield));
+  Player1.Flags = LIFT_WHILE_CLEARING;
   SetGameDefaults(&Player1, FRENZY);
   InitPlayfield(&Player1);
 
