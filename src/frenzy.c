@@ -56,7 +56,8 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
       int Tile1 = GetTile(P, P->CursorX, P->CursorY);
       int Tile2 = GetTile(P, P->CursorX+1, P->CursorY);
       if(Tile1 != BLOCK_DISABLED && Tile2 != BLOCK_DISABLED
-        && !IsFalling[P->CursorX][P->CursorY] && !IsFalling[P->CursorX+1][P->CursorY]) {
+        && !IsFalling[P->CursorX][P->CursorY] && !IsFalling[P->CursorX+1][P->CursorY]
+        && !IsFalling[P->CursorX][P->CursorY-1] && !IsFalling[P->CursorX+1][P->CursorY-1]) {
         P->SwapColor1 = Tile1;
         P->SwapColor2 = Tile2;
         if(!(P->Flags & SWAP_INSTANTLY)) {
