@@ -49,8 +49,11 @@ extern int retraces;
 extern int TILE_W, TILE_H;
 extern SDL_Renderer *ScreenRenderer;
 extern SDL_Texture *TileSheet;
+extern SDL_Texture *GameFont;
+extern TTF_Font *ChatFont;
 extern int DirX[];
 extern int DirY[];
+extern int ScaleFactor;
 
 #ifdef ENABLE_AUDIO
 extern Mix_Chunk *SampleSwap, *SampleDrop, *SampleDisappear, *SampleMove;
@@ -162,6 +165,7 @@ struct Playfield {
   int Active;
   int Direction; // for Avalanche
   int SwapColor3; // for pillars
+  int PieceCount; // number of pieces the player has placed so far
 
   // Game rules
   int MinMatchSize; // how many matching tiles are needed
@@ -171,6 +175,8 @@ struct Playfield {
 enum TextDrawFlags {
   TEXT_CENTERED = 1,
   TEXT_WHITE = 2,
+  TEXT_WRAPPED = 4,
+  TEXT_FROM_BOTTOM = 8,
 };
 
 void SDL_MessageBox(int Type, const char *Title, SDL_Window *Window, const char *fmt, ...);
@@ -185,6 +191,7 @@ void blitf(SDL_Texture* SrcBmp, SDL_Renderer* DstBmp, int SourceX, int SourceY, 
 void blitz(SDL_Texture* SrcBmp, SDL_Renderer* DstBmp, int SourceX, int SourceY, int DestX, int DestY, int Width, int Height, int Width2, int Height2);
 void blitfull(SDL_Texture* SrcBmp, SDL_Renderer* DstBmp, int DestX, int DestY);
 void DrawText(SDL_Texture* Font, int DestX, int DestY, int Flags, const char *fmt, ...);
+int DrawTextTTF(TTF_Font* Font, int DestX, int DestY, int Flags, const char *fmt, ...);
 void UpdatePlayfield(struct Playfield *P);
 int GetTile(struct Playfield *P, int X, int Y);
 void SetTile(struct Playfield *P, int X, int Y, int Value);

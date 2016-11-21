@@ -78,6 +78,17 @@ SDL_Surface *SDL_LoadImage(const char *FileName, int Flags) {
 SDL_Texture *LoadTexture(const char *FileName, int Flags) {
   SDL_Surface *Surface = SDL_LoadImage(FileName, Flags);
   if(!Surface) return NULL;
+
+  if(ScaleFactor != 1) {
+    // See if there is a better way to do this
+    SDL_Surface *Surface2 = SDL_CreateRGBSurface(0, Surface->w*ScaleFactor, Surface->h*ScaleFactor, 32, 0, 0, 0, 0);
+    SDL_FillRect(Surface2, NULL, SDL_MapRGB(Surface2->format, 255, 0, 255));
+    SDL_SetColorKey(Surface2, SDL_TRUE, SDL_MapRGB(Surface2->format, 255, 0, 255));
+    SDL_BlitScaled(Surface, NULL, Surface2, NULL);
+    SDL_FreeSurface(Surface);
+    Surface = Surface2;
+  }
+
   SDL_Texture *Texture = SDL_CreateTextureFromSurface(ScreenRenderer, Surface);
   SDL_FreeSurface(Surface);
   return Texture;

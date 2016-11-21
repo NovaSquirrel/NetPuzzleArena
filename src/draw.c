@@ -54,7 +54,7 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
 
   // Draw swapping tiles
   if(P->SwapTimer) {
-    int Offset = (4-P->SwapTimer)*4;
+    int Offset = (4-P->SwapTimer)*4*ScaleFactor;
     blit(TileSheet, ScreenRenderer, TILE_W*P->SwapColor1, 0, DrawX+P->CursorX*TILE_W+Offset, DrawY+P->CursorY*TILE_H-Rise, TILE_W, TILE_H);
     blit(TileSheet, ScreenRenderer, TILE_W*P->SwapColor2, 0, DrawX+(P->CursorX+1)*TILE_W-Offset, DrawY+P->CursorY*TILE_H-Rise, TILE_W, TILE_H);
   }
@@ -73,24 +73,66 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
 }
 
 void DrawText(SDL_Texture* Font, int DestX, int DestY, int Flags, const char *fmt, ...) {
+  // seems to mess up when the scale is 3
+
   char Buffer[1024];
   va_list args;
   va_start(args, fmt);
   vsnprintf(Buffer, sizeof(Buffer), fmt, args);
   va_end(args);
 
+  // render the text
   int FontW, FontH;
   SDL_QueryTexture(Font, NULL, NULL, &FontW, &FontH);
+  int FontCharW = FontW/16, FontCharH = FontH/12;
 
   int BaseY = (Flags&TEXT_WHITE) ? FontH/2 : 0;
 
   if(Flags & TEXT_CENTERED)
-    DestX -= strlen(Buffer)*8/2;
+    DestX -= strlen(Buffer)*FontCharW/2;
 
   for(const char *Text = Buffer; *Text; Text++) {
     char C = *Text - 0x20;
-    blit(Font, ScreenRenderer, (C&15)*8, BaseY+(C>>4)*8, DestX, DestY, 8, 8);
-    DestX += 8;
+    blit(Font, ScreenRenderer, (C&15)*FontCharW, BaseY+(C>>4)*FontCharH, DestX, DestY, FontCharW, FontCharH);
+    DestX += FontCharW;
+  }
+}
+
+int DrawTextTTF(TTF_Font* Font, int DestX, int DestY, int Flags, const char *fmt, ...) {
+  SDL_Color FGColor = {  0,   0,   0, 255}; 
+
+  char Buffer[1024];
+  va_list args;
+  va_start(args, fmt);
+  vsnprintf(Buffer, sizeof(Buffer), fmt, args);
+  va_end(args);
+
+  if(Flags & TEXT_CENTERED) {
+    int Width, Height;
+    TTF_SizeText(Font, Buffer, &Width, &Height);
+    DestX -= Width/2;
+    DestY -= Height/2;
   }
 
+  // render the text
+  SDL_Surface *TextSurface2;
+  if(Flags & TEXT_WRAPPED)
+    TextSurface2 = TTF_RenderUTF8_Blended_Wrapped(Font, Buffer, FGColor, ScreenWidth);
+  else
+    TextSurface2 = TTF_RenderUTF8_Blended(Font, Buffer, FGColor);
+
+  if(Flags & TEXT_FROM_BOTTOM)
+    DestY -= TextSurface2->h;
+
+  SDL_Surface *TextSurface = SDL_ConvertSurfaceFormat(TextSurface2, SDL_PIXELFORMAT_RGBA8888, 0);
+  SDL_Texture *Texture;
+  Texture = SDL_CreateTextureFromSurface(ScreenRenderer, TextSurface);
+  blit(Texture, ScreenRenderer, 0, 0, DestX, DestY, TextSurface->w, TextSurface->h);
+  SDL_FreeSurface(TextSurface);
+  SDL_FreeSurface(TextSurface2);
+  int MessageHeight;
+  SDL_QueryTexture(Texture, NULL, NULL, NULL, &MessageHeight);
+  SDL_DestroyTexture(Texture);
+
+  return MessageHeight;
 }

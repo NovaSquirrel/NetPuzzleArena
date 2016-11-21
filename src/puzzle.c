@@ -19,19 +19,19 @@
 #include "puzzle.h"
 int TILE_W = 16, TILE_H = 16;
 int ScreenWidth = 320, ScreenHeight = 240;
-
 SDL_Window *window = NULL;
 SDL_Renderer *ScreenRenderer = NULL;
 SDL_Texture *IconTexture = NULL;
 SDL_Texture *TileSheet = NULL;
 SDL_Texture *GameFont = NULL;
+TTF_Font *ChatFont = NULL;
 SDL_Surface *IconSurface = NULL;
 SDL_Surface *WindowIcon = NULL;
 int quit = 0;
 int retraces = 0;
 
 // config flags
-int DoubleSize = 0, NoAcceleration = 0;
+int ScaleFactor = 1, NoAcceleration = 0;
 
 #ifdef ENABLE_AUDIO
   Mix_Chunk *SampleSwap, *SampleDrop, *SampleDisappear, *SampleMove;
@@ -45,12 +45,12 @@ int main(int argc, char *argv[]) {
   // read parameters
   printf("argc %i\n", argc);
   for(int i=1; i<argc; i++) {
-    if(!strcmp(argv[i], "-2x") && !DoubleSize) {
-      TILE_W *= 2;
-      TILE_H *= 2;
-      ScreenWidth *= 2;
-      ScreenHeight *= 2;
-      DoubleSize = 1;
+    if(!strcmp(argv[i], "-scale") && ScaleFactor == 1) {
+      ScaleFactor = strtol(argv[i+1], NULL, 10);
+      TILE_W *= ScaleFactor;
+      TILE_H *= ScaleFactor;
+      ScreenWidth *= ScaleFactor;
+      ScreenHeight *= ScaleFactor;
     }
     if(!strcmp(argv[i], "-noaccel"))
       NoAcceleration = 1;
@@ -92,12 +92,13 @@ int main(int argc, char *argv[]) {
   WindowIcon = SDL_LoadImage("data/icon.png", 0);
   SDL_SetWindowIcon(window, WindowIcon);
 
-  TileSheet = LoadTexture(DoubleSize?"data/gfx2.png":"data/gfx.png", 0);
+  TileSheet = LoadTexture("data/gfx.png", 0);
   SDL_SetRenderDrawColor(ScreenRenderer, 0, 0, 0, 255);
   SDL_RenderClear(ScreenRenderer); 
   DrawText(GameFont, ScreenWidth/2, ScreenHeight/2, TEXT_CENTERED, "Initializing");
   SDL_RenderPresent(ScreenRenderer);
 
+  ChatFont = TTF_OpenFont("data/font.ttf", 8*ScaleFactor);
 #ifdef ENABLE_AUDIO
   if( (Mix_Init(MIX_INIT_MODPLUG) & MIX_INIT_MODPLUG) != MIX_INIT_MODPLUG ) {
     SDL_MessageBox(SDL_MESSAGEBOX_ERROR, "Error", NULL, "SDL_mixer could not initialize! SDL_mixer Error: %s", Mix_GetError());
@@ -131,6 +132,9 @@ int main(int argc, char *argv[]) {
   SDL_SetRenderDrawColor(ScreenRenderer, 128, 128, 128, 255);
   SDL_RenderClear(ScreenRenderer); 
 
+//  DrawTextTTF(ChatFont, 0, 1*ScaleFactor, TEXT_WHITE|TEXT_WRAPPED, "Is this a pretty decent amount of text for chat messages? With word wrap you've got two lines of text.");
+//  DrawTextTTF(ChatFont, 0, ScreenHeight-(1*ScaleFactor), TEXT_FROM_BOTTOM|TEXT_WHITE|TEXT_WRAPPED, "The second player's messages can go on the bottom or something.");
+
   while(!quit) {
     SDL_Event e;
     while(SDL_PollEvent(&e) != 0) {
@@ -159,6 +163,9 @@ int main(int argc, char *argv[]) {
     UpdatePlayfield(&Player1);
     DrawPlayfield(&Player1, (ScreenWidth/2)-(Player1.Width*TILE_W)/2, (ScreenHeight/2)-((Player1.Height-1)*TILE_H)/2);
 
+//    DrawPlayfield(&Player1, 8*ScaleFactor, (ScreenHeight/2)-((Player1.Height-1)*TILE_H)/2);
+//    DrawPlayfield(&Player1, ScreenWidth-8*ScaleFactor-(Player1.Width*TILE_W), (ScreenHeight/2)-((Player1.Height-1)*TILE_H)/2);
+
     SDL_RenderPresent(ScreenRenderer);
     if(retraces % 3)
       SDL_Delay(17);
@@ -167,6 +174,9 @@ int main(int argc, char *argv[]) {
 
     retraces++;
   }
+
+  // close resources
+  TTF_CloseFont(ChatFont);
 	
 #ifdef ENABLE_AUDIO
   Mix_CloseAudio();

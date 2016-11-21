@@ -127,6 +127,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
     }
 
   // create match structs for the matches that are found
+  int ComboSize = 0;
   for(int y=0; y<P->Height-1; y++)
     for(int x=0; x<P->Width; x++) {
       if(Used[x][y] || UsedV[x][y]) {
@@ -134,6 +135,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
         int Width = Used[x][y];
         if(!Width)
           Width = 1;
+        ComboSize += Width;
         Match->Color = GetTile(P, x, y);
         Match->X = x;
         Match->Y = y;
@@ -159,6 +161,9 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
         x+=Width-1;
       }
     }
+  if(ComboSize)
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Combo of size %i", ComboSize);
+
   if(FirstMatch) {
     if(!P->Match)
       P->Match = FirstMatch;
