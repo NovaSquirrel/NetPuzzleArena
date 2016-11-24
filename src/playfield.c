@@ -175,21 +175,6 @@ void UpdateStacker(struct Playfield *P) {
 }
 
 void UpdatePlayfield(struct Playfield *P) {
-  // Update keys, do key repeat
-  for(int i=0; i<KEY_COUNT; i++) {
-    P->KeyNew[i] = P->KeyDown[i] && !P->KeyLast[i];
-
-    if(i < KEY_OK) {
-      if(P->KeyDown[i])
-        P->KeyRepeat[i]++;
-      else
-        P->KeyRepeat[i] = 0;
-
-      if(P->KeyRepeat[i] > 8)
-        P->KeyNew[i] = 1;
-    }
-  }
-  memcpy(P->KeyLast, P->KeyDown, sizeof(P->KeyDown));
 
   switch(P->GameType) {
     case FRENZY:

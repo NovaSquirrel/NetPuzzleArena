@@ -54,6 +54,8 @@ extern TTF_Font *ChatFont;
 extern int DirX[];
 extern int DirY[];
 extern int ScaleFactor;
+extern int quit;
+extern struct Playfield Player1;
 
 #ifdef ENABLE_AUDIO
 extern Mix_Chunk *SampleSwap, *SampleDrop, *SampleDisappear, *SampleMove;
@@ -117,7 +119,8 @@ enum GameplayOptions {
   SWAP_INSTANTLY = 1,
   LIFT_WHILE_CLEARING = 2,
   PULL_BLOCK_HORIZONTAL = 4,
-  MOUSE_CONTROL = 8
+  MOUSE_CONTROL = 8,
+  NO_AUTO_REPEAT = 16
 };
 
 struct FallingChunk {
@@ -212,3 +215,4 @@ void ClearConnected(struct Playfield *P, int X, int Y);
 int MakeBlocksFall(struct Playfield *P);
 int TestBlocksFall(struct Playfield *P);
 int ClearAvalancheStyle(struct Playfield *P);
+void UpdateKeys(struct Playfield *P);

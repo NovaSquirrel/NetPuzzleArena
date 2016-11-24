@@ -29,6 +29,7 @@ SDL_Surface *IconSurface = NULL;
 SDL_Surface *WindowIcon = NULL;
 int quit = 0;
 int retraces = 0;
+struct Playfield Player1;
 
 // config flags
 int ScaleFactor = 1, NoAcceleration = 0;
@@ -40,10 +41,11 @@ int ScaleFactor = 1, NoAcceleration = 0;
 void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY);
 void SetGameDefaults(struct Playfield *P, int Game);
 void InitPlayfield(struct Playfield *P);
+int ShowTitle();
+void MainMenu();
 
 int main(int argc, char *argv[]) {
   // read parameters
-  printf("argc %i\n", argc);
   for(int i=1; i<argc; i++) {
     if(!strcmp(argv[i], "-scale") && ScaleFactor == 1) {
       ScaleFactor = strtol(argv[i+1], NULL, 10);
@@ -115,6 +117,8 @@ int main(int argc, char *argv[]) {
   Mix_VolumeChunk(SampleDrop, MIX_MAX_VOLUME/2);
   Mix_VolumeChunk(SampleDisappear, MIX_MAX_VOLUME/2);
 
+  ShowTitle();
+
 #ifdef ENABLE_MUSIC
   Mix_Music *music;
   music = Mix_LoadMUS("data/bgm.xm");
@@ -123,7 +127,6 @@ int main(int argc, char *argv[]) {
 #endif
 #endif
 
-  struct Playfield Player1;
   memset(&Player1, 0, sizeof(struct Playfield));
   Player1.Flags = LIFT_WHILE_CLEARING;
   SetGameDefaults(&Player1, FRENZY);
@@ -142,23 +145,7 @@ int main(int argc, char *argv[]) {
         quit = 1;
     }
 
-    const Uint8 *Keyboard = SDL_GetKeyboardState(NULL);
-    Player1.KeyDown[KEY_LEFT] = Keyboard[SDL_SCANCODE_LEFT];
-    Player1.KeyDown[KEY_DOWN] = Keyboard[SDL_SCANCODE_DOWN];
-    Player1.KeyDown[KEY_UP] = Keyboard[SDL_SCANCODE_UP];
-    Player1.KeyDown[KEY_RIGHT] = Keyboard[SDL_SCANCODE_RIGHT];
-    Player1.KeyDown[KEY_OK] = Keyboard[SDL_SCANCODE_RETURN];
-    Player1.KeyDown[KEY_BACK] = Keyboard[SDL_SCANCODE_BACKSPACE];
-    Player1.KeyDown[KEY_SWAP] = Keyboard[SDL_SCANCODE_SPACE];
-    Player1.KeyDown[KEY_LIFT] = Keyboard[SDL_SCANCODE_Z];
-    Player1.KeyDown[KEY_PAUSE] = Keyboard[SDL_SCANCODE_P];
-    Player1.KeyDown[KEY_ROTATE_L] = Keyboard[SDL_SCANCODE_X];
-    Player1.KeyDown[KEY_ROTATE_R] = Keyboard[SDL_SCANCODE_C];
-
-    if(Keyboard[SDL_SCANCODE_B]) {
-      Player1.GameType ^= 1;
-      SDL_Delay(500);
-    }
+    UpdateKeys(&Player1);
 
     UpdatePlayfield(&Player1);
     DrawPlayfield(&Player1, (ScreenWidth/2)-(Player1.Width*TILE_W)/2, (ScreenHeight/2)-((Player1.Height-1)*TILE_H)/2);

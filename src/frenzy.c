@@ -23,8 +23,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
   memset(IsFalling, 0, sizeof(IsFalling));
   for(struct FallingChunk *Fall = P->FallingData; Fall; Fall = Fall->Next)
     for(int h=0; h<Fall->Height; h++)
-      IsFalling[Fall->X][Fall->Y+h] = 1;
-
+      IsFalling[Fall->X][Fall->Y+h] = 1+!Fall->Timer;
 
   // Cursor movement
   if(P->SwapTimer) {
@@ -34,6 +33,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
       SetTile(P, P->CursorX+1, P->CursorY, P->SwapColor1);
     }
   }
+
   if(!P->SwapTimer) {
     int OldX = P->CursorX; //, OldY = P->CursorY;
 
@@ -56,6 +56,8 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
       int Tile1 = GetTile(P, P->CursorX, P->CursorY);
       int Tile2 = GetTile(P, P->CursorX+1, P->CursorY);
       if(Tile1 != BLOCK_DISABLED && Tile2 != BLOCK_DISABLED
+        // to do: you CAN catch a tile as it's falling.
+        // this should probably split the falling column into two parts
         && !IsFalling[P->CursorX][P->CursorY] && !IsFalling[P->CursorX+1][P->CursorY]
         && !IsFalling[P->CursorX][P->CursorY-1] && !IsFalling[P->CursorX+1][P->CursorY-1]) {
         P->SwapColor1 = Tile1;

@@ -79,12 +79,24 @@ SDL_Texture *LoadTexture(const char *FileName, int Flags) {
   SDL_Surface *Surface = SDL_LoadImage(FileName, Flags);
   if(!Surface) return NULL;
 
+  // Do integer scaling if needed
   if(ScaleFactor != 1) {
     // See if there is a better way to do this
-    SDL_Surface *Surface2 = SDL_CreateRGBSurface(0, Surface->w*ScaleFactor, Surface->h*ScaleFactor, 32, 0, 0, 0, 0);
-    SDL_FillRect(Surface2, NULL, SDL_MapRGB(Surface2->format, 255, 0, 255));
-    SDL_SetColorKey(Surface2, SDL_TRUE, SDL_MapRGB(Surface2->format, 255, 0, 255));
-    SDL_BlitScaled(Surface, NULL, Surface2, NULL);
+    SDL_Surface *Surface2 = SDL_CreateRGBSurface(0, Surface->w*ScaleFactor, Surface->h*ScaleFactor,
+      Surface->format->BitsPerPixel, Surface->format->Rmask, Surface->format->Gmask, Surface->format->Bmask, Surface->format->Amask);
+    SDL_FillRect(Surface2, NULL, SDL_MapRGBA(Surface2->format, 0, 0, 0, 0));
+
+    // Yes I know this is ridiculous but accessing the pixels directly seems very error prone
+    for(int w=0; w<Surface->w; w++)
+      for(int h=0; h<Surface->h; h++) {
+        SDL_Rect Rect1 = {w, h, 1, 1};
+        for(int w2=0; w2<ScaleFactor; w2++)
+          for(int h2=0; h2<ScaleFactor; h2++) {
+            SDL_Rect Rect2 = {w*ScaleFactor+w2, h*ScaleFactor+h2, 1, 1};
+            SDL_LowerBlit(Surface, &Rect1, Surface2, &Rect2);
+          }
+      }
+
     SDL_FreeSurface(Surface);
     Surface = Surface2;
   }
@@ -130,7 +142,39 @@ void blitz(SDL_Texture* SrcBmp, SDL_Renderer* DstBmp, int SourceX, int SourceY, 
 }
 
 void blitfull(SDL_Texture* SrcBmp, SDL_Renderer* DstBmp, int DestX, int DestY) {
-  SDL_Rect Dst = {DestX, DestY};
+  int Width, Height;
+  SDL_QueryTexture(SrcBmp, NULL, NULL, &Width, &Height);
+  SDL_Rect Dst = {DestX, DestY, Width, Height};
   SDL_RenderCopy(DstBmp,  SrcBmp, NULL, &Dst);
 }
 
+void UpdateKeys(struct Playfield *P) {
+  const Uint8 *Keyboard = SDL_GetKeyboardState(NULL);
+  P->KeyDown[KEY_LEFT] = Keyboard[SDL_SCANCODE_LEFT];
+  P->KeyDown[KEY_DOWN] = Keyboard[SDL_SCANCODE_DOWN];
+  P->KeyDown[KEY_UP] = Keyboard[SDL_SCANCODE_UP];
+  P->KeyDown[KEY_RIGHT] = Keyboard[SDL_SCANCODE_RIGHT];
+  P->KeyDown[KEY_OK] = Keyboard[SDL_SCANCODE_RETURN];
+  P->KeyDown[KEY_BACK] = Keyboard[SDL_SCANCODE_BACKSPACE];
+  P->KeyDown[KEY_SWAP] = Keyboard[SDL_SCANCODE_SPACE];
+  P->KeyDown[KEY_LIFT] = Keyboard[SDL_SCANCODE_Z];
+  P->KeyDown[KEY_PAUSE] = Keyboard[SDL_SCANCODE_P];
+  P->KeyDown[KEY_ROTATE_L] = Keyboard[SDL_SCANCODE_X];
+  P->KeyDown[KEY_ROTATE_R] = Keyboard[SDL_SCANCODE_C];
+
+  // Update keys, do key repeat
+  for(int i=0; i<KEY_COUNT; i++) {
+    P->KeyNew[i] = P->KeyDown[i] && !P->KeyLast[i];
+
+    if(i < KEY_OK && !(P->Flags&NO_AUTO_REPEAT)) {
+      if(P->KeyDown[i])
+        P->KeyRepeat[i]++;
+      else
+        P->KeyRepeat[i] = 0;
+
+      if(P->KeyRepeat[i] > 8)
+        P->KeyNew[i] = 1;
+    }
+  }
+  memcpy(P->KeyLast, P->KeyDown, sizeof(P->KeyDown));
+}

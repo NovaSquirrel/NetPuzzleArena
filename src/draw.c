@@ -99,7 +99,8 @@ void DrawText(SDL_Texture* Font, int DestX, int DestY, int Flags, const char *fm
 }
 
 int DrawTextTTF(TTF_Font* Font, int DestX, int DestY, int Flags, const char *fmt, ...) {
-  SDL_Color FGColor = {  0,   0,   0, 255}; 
+  SDL_Color White = {  255,   255,   255, 255}; 
+  SDL_Color Black = {    0,     0,     0, 255}; 
 
   char Buffer[1024];
   va_list args;
@@ -117,9 +118,9 @@ int DrawTextTTF(TTF_Font* Font, int DestX, int DestY, int Flags, const char *fmt
   // render the text
   SDL_Surface *TextSurface2;
   if(Flags & TEXT_WRAPPED)
-    TextSurface2 = TTF_RenderUTF8_Blended_Wrapped(Font, Buffer, FGColor, ScreenWidth);
+    TextSurface2 = TTF_RenderUTF8_Blended_Wrapped(Font, Buffer, (Flags&TEXT_WHITE)?Black:White, ScreenWidth);
   else
-    TextSurface2 = TTF_RenderUTF8_Blended(Font, Buffer, FGColor);
+    TextSurface2 = TTF_RenderUTF8_Blended(Font, Buffer, (Flags&TEXT_WHITE)?Black:White);
 
   if(Flags & TEXT_FROM_BOTTOM)
     DestY -= TextSurface2->h;
