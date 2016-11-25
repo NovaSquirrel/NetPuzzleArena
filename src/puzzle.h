@@ -23,6 +23,7 @@
 #define ENABLE_AUDIO 1
 #define ENABLE_SOUNDS 1
 //#define ENABLE_MUSIC 1
+//#define DISPLAY_CHAIN_COUNT 1
 
 #include <stdio.h>
 #include <string.h>
@@ -141,6 +142,7 @@ struct MatchRow {
   int Timer2; // timer for making individual blocks disappear
   int DisplayX;     // \ used to make blocks gradually disappear
   int DisplayWidth; // /
+  int Chain; // chain count
   struct MatchRow *Child, *Next;
 };
 
@@ -175,6 +177,11 @@ struct Playfield {
   int ColorCount;
 };
 
+// different parts of the playfield int
+#define PF_COLOR        0x000ff
+#define PF_CHAIN        0x0ff00
+#define PF_CHAIN_ONE    0x00100
+#define PF_JUST_LANDED  0x10000
 enum TextDrawFlags {
   TEXT_CENTERED = 1,
   TEXT_WHITE = 2,
@@ -197,6 +204,7 @@ void DrawText(SDL_Texture* Font, int DestX, int DestY, int Flags, const char *fm
 int DrawTextTTF(TTF_Font* Font, int DestX, int DestY, int Flags, const char *fmt, ...);
 void UpdatePlayfield(struct Playfield *P);
 int GetTile(struct Playfield *P, int X, int Y);
+int GetColor(struct Playfield *P, int X, int Y);
 void SetTile(struct Playfield *P, int X, int Y, int Value);
 void RandomizeRow(struct Playfield *P, int y);
 

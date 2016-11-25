@@ -40,13 +40,19 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
   // Draw tiles
   for(int x=0; x<P->Width; x++)
     for(int y=0; y<P->Height; y++) {
-      int Tile = P->Playfield[P->Width * y + x];
+      int Tile = P->Playfield[P->Width * y + x]&PF_COLOR;
       blit(TileSheet, ScreenRenderer, TILE_W*Tile, 0, DrawX+x*TILE_W, DrawY+y*TILE_H-Rise, TILE_W, TILE_H);
+#ifdef DISPLAY_CHAIN_COUNT
+      DrawText(GameFont, DrawX+x*TILE_W, DrawY+y*TILE_H-Rise, 0, "%i", (P->Playfield[P->Width * y + x]&PF_CHAIN)>>8);
+#endif
     }
   // Draw exploding blocks
   for(struct MatchRow *Heads = P->Match; Heads; Heads=Heads->Next) {
     int SourceY = Heads->Timer1?TILE_H:TILE_H*2;
     for(struct MatchRow *Match = Heads; Match; Match=Match->Child) {
+#ifdef DISPLAY_CHAIN_COUNT
+      DrawText(GameFont, DrawX+Match->X*TILE_W, DrawY+Match->Y*TILE_H-Rise, 0, "!%i", Match->Chain>>8);
+#endif
       for(int i=0; i<Match->DisplayWidth; i++)
         blit(TileSheet, ScreenRenderer, TILE_W*Match->Color, SourceY, DrawX+(Match->DisplayX+i)*TILE_W, DrawY+Match->Y*TILE_H-Rise, TILE_W, TILE_H);
     }

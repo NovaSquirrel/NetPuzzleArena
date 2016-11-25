@@ -21,6 +21,10 @@
 int PlayfieldWidth = 6;
 int PlayfieldHeight = 13;
 
+inline int GetColor(struct Playfield *P, int X, int Y) {
+  return P->Playfield[P->Width * Y + X]&PF_COLOR;
+}
+
 inline int GetTile(struct Playfield *P, int X, int Y) {
   return P->Playfield[P->Width * Y + X];
 }

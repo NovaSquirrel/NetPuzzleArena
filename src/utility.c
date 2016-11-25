@@ -161,6 +161,8 @@ void UpdateKeys(struct Playfield *P) {
   P->KeyDown[KEY_PAUSE] = Keyboard[SDL_SCANCODE_P];
   P->KeyDown[KEY_ROTATE_L] = Keyboard[SDL_SCANCODE_X];
   P->KeyDown[KEY_ROTATE_R] = Keyboard[SDL_SCANCODE_C];
+  if(Keyboard[SDL_SCANCODE_ESCAPE])
+    quit = 1;
 
   // Update keys, do key repeat
   for(int i=0; i<KEY_COUNT; i++) {

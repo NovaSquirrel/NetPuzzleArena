@@ -88,6 +88,10 @@ int main(int argc, char *argv[]) {
   }
 
   ScreenRenderer = SDL_CreateRenderer(window, -1, NoAcceleration?0:SDL_RENDERER_ACCELERATED);
+  SDL_RendererInfo RendererInfo;
+  SDL_GetRendererInfo(ScreenRenderer, &RendererInfo);
+  SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Software? %s, Accelerated? %s, Rendererer: %s",
+    (RendererInfo.flags&SDL_RENDERER_SOFTWARE)?"Yes":"No", (RendererInfo.flags&SDL_RENDERER_ACCELERATED)?"Yes":"No", RendererInfo.name);
 
   // set window icon
   GameFont = LoadTexture("data/font.png", 0);

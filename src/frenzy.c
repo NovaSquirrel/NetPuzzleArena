@@ -18,6 +18,8 @@
  */
 #include "puzzle.h"
 
+#define HOVER_TIME 12
+
 void UpdatePuzzleFrenzy(struct Playfield *P) {
   int IsFalling[P->Width][P->Height];
   memset(IsFalling, 0, sizeof(IsFalling));
@@ -60,8 +62,8 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
         // this should probably split the falling column into two parts
         && !IsFalling[P->CursorX][P->CursorY] && !IsFalling[P->CursorX+1][P->CursorY]
         && !IsFalling[P->CursorX][P->CursorY-1] && !IsFalling[P->CursorX+1][P->CursorY-1]) {
-        P->SwapColor1 = Tile1;
-        P->SwapColor2 = Tile2;
+        P->SwapColor1 = Tile1 & PF_COLOR; // strip out chain information for now
+        P->SwapColor2 = Tile2 & PF_COLOR;
         if(!(P->Flags & SWAP_INSTANTLY)) {
           SetTile(P, P->CursorX, P->CursorY, BLOCK_DISABLED);
           SetTile(P, P->CursorX+1, P->CursorY, BLOCK_DISABLED);
@@ -99,28 +101,48 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
   struct MatchRow *FirstMatch = NULL, *CurMatch = NULL;
   int Used[P->Width][P->Height];  // horizontal
   int UsedV[P->Width][P->Height]; // vertical
+  int ChainMap[P->Width][P->Height];
   memset(Used, 0, sizeof(Used));
   memset(UsedV, 0, sizeof(UsedV));
+  memset(ChainMap, 0, sizeof(ChainMap));
   for(int y=0; y<P->Height-1; y++)
     for(int x=0; x<P->Width; x++) {
-      int Horiz = 0, Vert = 0, Color = GetTile(P, x, y);
+      int Horiz = 0, Vert = 0, Color = GetColor(P, x, y);
       if(!Color || Color==BLOCK_DISABLED || IsFalling[x][y])
         continue;
       if(y < P->Height-2 && !GetTile(P, x, y+1))
         continue;
 
+      int MaxChain = 0;
+
       if(!Used[x][y])
-        while((x+Horiz+1 < P->Width && GetTile(P, x+Horiz+1, y) == Color) &&
-              !IsFalling[x+Horiz+1][y] && (y!=P->Height-2 || GetTile(P, x+Horiz+1, y+1)))
+        while((x+Horiz+1 < P->Width && GetColor(P, x+Horiz+1, y) == Color) &&
+              !IsFalling[x+Horiz+1][y] && (y!=P->Height-2 || GetColor(P, x+Horiz+1, y+1)))
           Horiz++;
       if(!UsedV[x][y])
-        while(y+Vert+1 < P->Height-1 && !UsedV[x][y+Vert+1] && GetTile(P, x, y+Vert+1) == Color)
+        while(y+Vert+1 < P->Height-1 && !UsedV[x][y+Vert+1] && GetColor(P, x, y+Vert+1) == Color)
           Vert++;
 
+      // mark tiles vertically that were used in the combo, also look for max chain
       if(Vert >= P->MinMatchSize-1) {
-        for(int i=0; i<=Vert; i++)
+        for(int i=0; i<=Vert; i++) {
           UsedV[x][y+i] = 1;
+          int Chain = GetTile(P, x, y+i)&PF_CHAIN;
+          if(Chain > MaxChain)
+            MaxChain = Chain;
+        }
       }
+      // look at chain size first
+      for(int i=0; i<=Horiz; i++) {
+        int Chain = GetTile(P, x+i, y)&PF_CHAIN;
+        if(Chain > MaxChain)
+          MaxChain = Chain;
+      }
+
+      if(Vert >= P->MinMatchSize-1 || Horiz >= P->MinMatchSize-1)
+        if(MaxChain)
+          SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Chain %i", MaxChain>>8);
+  
       if(Horiz >= P->MinMatchSize-1) {
         for(int i=0; i<=Horiz; i++)
           Used[x+i][y] = 1;
@@ -129,7 +151,15 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
     }
 
   // create match structs for the matches that are found
-  int ComboSize = 0;
+  int ComboSize = 0, ComboChainSize = 0;
+  // look for chains first
+  for(int y=0; y<P->Height-1; y++)
+    for(int x=0; x<P->Width; x++) {
+      int Chain = GetTile(P, x, y)&PF_CHAIN;
+      if(Chain > ComboChainSize)
+        ComboChainSize = Chain;
+    }
+
   for(int y=0; y<P->Height-1; y++)
     for(int x=0; x<P->Width; x++) {
       if(Used[x][y] || UsedV[x][y]) {
@@ -138,7 +168,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
         if(!Width)
           Width = 1;
         ComboSize += Width;
-        Match->Color = GetTile(P, x, y);
+        Match->Color = GetColor(P, x, y);
         Match->X = x;
         Match->Y = y;
         Match->DisplayX = x;
@@ -147,6 +177,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
         Match->Child = NULL;
         Match->Next = NULL;
         Match->Timer1 = 0;
+        Match->Chain = ComboChainSize;
         if(!FirstMatch)
           Match->Timer2 = 26;
         else
@@ -163,8 +194,8 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
         x+=Width-1;
       }
     }
-  if(ComboSize)
-    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Combo of size %i", ComboSize);
+//  if(ComboSize)
+//    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Combo of size %i", ComboSize);
 
   if(FirstMatch) {
     if(!P->Match)
@@ -213,6 +244,15 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 
         // free, and also erase all those blocks
         for(Last = Match; Last;) {
+          // mark chain counters
+         for(int x=Last->X; x<(Last->X+Last->Width); x++) {
+            for(int y=Last->Y; GetColor(P, x, y) && y; y--) {
+              int Chain = GetTile(P, x, y) & PF_CHAIN;
+              if(Chain < Last->Chain+PF_CHAIN_ONE)
+                SetTile(P, x, y, GetColor(P, x, y) | (Last->Chain+PF_CHAIN_ONE));
+            }
+          }
+
           struct MatchRow *Next = Last->Child;
           free(Last);
           Last = Next;
@@ -229,7 +269,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
         Used[Match->X+i][Match->Y] = 1;
   for(int x=0; x<P->Width; x++)
     for(int y=0; y<P->Height; y++)
-      if(GetTile(P, x, y) == BLOCK_DISABLED && !Used[x][y]
+      if(GetColor(P, x, y) == BLOCK_DISABLED && !Used[x][y]
       && (!P->SwapTimer || (y != P->CursorY && (x != P->CursorX && x != P->CursorX+1))))
         SetTile(P, x, y, BLOCK_EMPTY);
 
@@ -238,14 +278,14 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
   // gravity
   for(int x=0; x< P->Width; x++) {
     for(int y=0; y<P->Height-1; y++) {
-      int Color = GetTile(P, x, y);
+      int Color = GetColor(P, x, y);
       if(!Color || Color == BLOCK_DISABLED || IsFalling[x][y])
         continue;
 
       // find the bottom of this stack
       int Bottom = y+1;
       while(Bottom < P->Height-1) {
-        int Color2 = GetTile(P, x, Bottom);
+        int Color2 = GetColor(P, x, Bottom);
         if(!Color2 || Color2 == BLOCK_DISABLED || IsFalling[x][Bottom])
           break;
         Bottom++;
@@ -253,12 +293,12 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 
       if(Bottom == P->Height-1)
         break;
-      if(GetTile(P, x, Bottom) != BLOCK_DISABLED) {
+      if(GetColor(P, x, Bottom) != BLOCK_DISABLED) {
         struct FallingChunk *Fall = (struct FallingChunk*)malloc(sizeof(struct FallingChunk));
         Fall->X = x;
         Fall->Y = y;
         Fall->Height = Bottom-y;
-        Fall->Timer = 12;
+        Fall->Timer = HOVER_TIME;
         Fall->Next = NULL;
 
         // add to the list of falling chunks
@@ -273,6 +313,14 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
       y = Bottom-1;
     }
   }
+
+  // remove Just Landed flag
+  for(int x=0; x<P->Width; x++)
+    for(int y=0; y<P->Height-1; y++) {
+      int Tile = GetTile(P, x, y);
+      if(Tile & PF_JUST_LANDED)
+        SetTile(P, x, y, Tile & PF_COLOR);
+    }
 
   // move falling things down
   int PlayDropSound = 0;
@@ -298,6 +346,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
       SetTile(P, F->X, F->Y, BLOCK_EMPTY);
       F->Y++;
     } else if(ColorAtBottom == BLOCK_DISABLED) {
+      F->Timer = HOVER_TIME;
       F = Next;
       continue;
     } else if(ColorAtBottom && !IsFalling[F->X][F->Y + F->Height]) {
@@ -310,12 +359,16 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
       if(P->FallingData == F)
         P->FallingData = F->Next;
       else {
+        // find the previous one and make it point to the next
         struct FallingChunk *Prev = P->FallingData;
         while(Prev->Next != F)
           Prev = Prev->Next;
         Prev->Next = F->Next;
       }
-    free(F);
+
+      for(int y=F->Y; y < (F->Y+F->Height); y++)
+        SetTile(P, F->X, y, GetTile(P, F->X, y) | PF_JUST_LANDED);
+      free(F);
     }
 
     F = Next;
