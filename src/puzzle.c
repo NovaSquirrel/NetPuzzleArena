@@ -19,6 +19,7 @@
 #include "puzzle.h"
 int TILE_W = 16, TILE_H = 16;
 int ScreenWidth = 320, ScreenHeight = 240;
+char *PrefPath;
 SDL_Window *window = NULL;
 SDL_Renderer *ScreenRenderer = NULL;
 SDL_Texture *IconTexture = NULL;
@@ -60,6 +61,8 @@ int main(int argc, char *argv[]) {
 
   // seed the randomizer
   srand(time(NULL));
+
+  PrefPath = SDL_GetPrefPath("Bushytail Software", "NetPuzzleArena");
 
   if(SDL_Init(SDL_INIT_VIDEO) < 0){
     printf("SDL could not initialize video! SDL_Error: %s\n", SDL_GetError());
@@ -169,6 +172,7 @@ int main(int argc, char *argv[]) {
   // close resources
   TTF_CloseFont(ChatFont);
 	
+  if(PrefPath) SDL_free(PrefPath);
 #ifdef ENABLE_AUDIO
   Mix_CloseAudio();
   Mix_Quit();

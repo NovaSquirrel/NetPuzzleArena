@@ -31,16 +31,23 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
   SDL_Rect ClipRectangle = {DrawX, DrawY, P->Width * TILE_W, (P->Height-1) * TILE_H};
   SDL_RenderSetClipRect(ScreenRenderer, &ClipRectangle);
 
+#ifdef FAST_MODE
+  SDL_SetRenderDrawColor(ScreenRenderer, 8, 8, 8, 255);
+  SDL_RenderFillRect(ScreenRenderer, NULL);
+#else
   for(int y=0; y<VisualHeight; y++) {
     int Value = (float)y / VisualHeight * 255;
     SDL_SetRenderDrawColor(ScreenRenderer, Value, Value, Value, 255);
     SDL_RenderDrawLine(ScreenRenderer, DrawX, DrawY+y, DrawX+VisualWidth-1, DrawY+y);
   }
+#endif
 
   // Draw tiles
   for(int x=0; x<P->Width; x++)
     for(int y=0; y<P->Height; y++) {
       int Tile = P->Playfield[P->Width * y + x]&PF_COLOR;
+      if(!Tile)
+        continue;
       blit(TileSheet, ScreenRenderer, TILE_W*Tile, 0, DrawX+x*TILE_W, DrawY+y*TILE_H-Rise, TILE_W, TILE_H);
 #ifdef DISPLAY_CHAIN_COUNT
       DrawText(GameFont, DrawX+x*TILE_W, DrawY+y*TILE_H-Rise, 0, "%i", (P->Playfield[P->Width * y + x]&PF_CHAIN)>>8);
