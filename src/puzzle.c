@@ -156,6 +156,7 @@ int main(int argc, char *argv[]) {
 
     UpdatePlayfield(&Player1);
     DrawPlayfield(&Player1, (ScreenWidth/2)-(Player1.Width*TILE_W)/2, (ScreenHeight/2)-((Player1.Height-1)*TILE_H)/2);
+    DrawText(GameFont, (ScreenWidth/2), 10*ScaleFactor, TEXT_CENTERED, "%i", Player1.Score);
 
 //    DrawPlayfield(&Player1, 8*ScaleFactor, (ScreenHeight/2)-((Player1.Height-1)*TILE_H)/2);
 //    DrawPlayfield(&Player1, ScreenWidth-8*ScaleFactor-(Player1.Width*TILE_W), (ScreenHeight/2)-((Player1.Height-1)*TILE_H)/2);

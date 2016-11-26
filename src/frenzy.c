@@ -20,12 +20,42 @@
 
 #define HOVER_TIME 12
 
+int BasePointsForCombo(int Size) {
+  // https://www.gamefaqs.com/n64/913924-pokemon-puzzle-league/faqs/16679
+  const static int Table[] = {  30,    50,   150,   190,    230,   270,   310,   400,
+                               450,   500,   550,   700,    760,   850,   970,  1120,
+                              1300,  1510,  1750,  2020,   2320,  2650,  3010,  3400,
+                              3820,  4270,  4750,  5260,  15000, 15570, 16170, 16800,
+                             17460, 18150, 18870, 19620,  20400};
+  if(Size < 4)
+    return 0;
+  if(Size >= 4 && Size <= 40)
+    return Table[Size-4];
+  return 20400 + ((Size - 40) * 800);
+}
+
+int PointsForChainPart(int Size) {
+// Size is the chain number from the original game, minus 1
+// so if you clear blocks and cause a chain, size is 1
+  const static int Table[] = {50, 80, 150, 300, 400, 500, 700, 900, 1100, 1300, 1500, 1800};
+  if(Size <= 1)
+    return 0;
+  if(Size <= 12)
+    return Table[Size-1];
+  return 6980 + ((Size+1 - 12) * 1800);
+}
+
 void UpdatePuzzleFrenzy(struct Playfield *P) {
   int IsFalling[P->Width][P->Height];
+  int MaxActiveChain = 0;
   memset(IsFalling, 0, sizeof(IsFalling));
   for(struct FallingChunk *Fall = P->FallingData; Fall; Fall = Fall->Next)
-    for(int h=0; h<Fall->Height; h++)
+    for(int h=0; h<Fall->Height; h++) {
       IsFalling[Fall->X][Fall->Y+h] = 1+!Fall->Timer;
+      int Tile = GetTile(P, Fall->X, Fall->Y+h);
+      if(MaxActiveChain < ((Tile&PF_CHAIN)>>8))
+        MaxActiveChain = (Tile&PF_CHAIN)>>8;
+    }
 
   // Cursor movement
   if(P->SwapTimer) {
@@ -53,7 +83,6 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 //    if((OldX != P->CursorX || OldY != P->CursorY) && !UsedAutorepeat)
 //      Mix_PlayChannel(-1, SampleMove, 0);
 
-
     if(P->KeyNew[KEY_SWAP]) {
       int Tile1 = GetTile(P, P->CursorX, P->CursorY);
       int Tile2 = GetTile(P, P->CursorX+1, P->CursorY);
@@ -61,7 +90,8 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
         // to do: you CAN catch a tile as it's falling.
         // this should probably split the falling column into two parts
         && !IsFalling[P->CursorX][P->CursorY] && !IsFalling[P->CursorX+1][P->CursorY]
-        && !IsFalling[P->CursorX][P->CursorY-1] && !IsFalling[P->CursorX+1][P->CursorY-1]) {
+//        && !IsFalling[P->CursorX][P->CursorY-1] && !IsFalling[P->CursorX+1][P->CursorY-1]
+        ) {
         P->SwapColor1 = Tile1 & PF_COLOR; // strip out chain information for now
         P->SwapColor2 = Tile2 & PF_COLOR;
         if(!(P->Flags & SWAP_INSTANTLY)) {
@@ -140,9 +170,11 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
       }
 
       if(Vert >= P->MinMatchSize-1 || Horiz >= P->MinMatchSize-1)
-        if(MaxChain)
+        if(MaxChain) {
           SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Chain %i", MaxChain>>8);
-  
+          P->Score += PointsForChainPart(MaxChain>>8);
+        }
+
       if(Horiz >= P->MinMatchSize-1) {
         for(int i=0; i<=Horiz; i++)
           Used[x+i][y] = 1;
@@ -194,7 +226,12 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
         x+=Width-1;
       }
     }
-//  if(ComboSize)
+  if(ComboSize) {
+    P->Score += BasePointsForCombo(ComboSize);
+    // chain bonus
+    if(MaxActiveChain)
+      P->Score += PointsForChainPart(MaxActiveChain-1);
+  }
 //    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Combo of size %i", ComboSize);
 
   if(FirstMatch) {
@@ -225,6 +262,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
       Last->Timer2 = 10;
       Last->DisplayX++;
       Last->DisplayWidth--;
+      P->Score += 10;
 #ifdef ENABLE_AUDIO
       Mix_PlayChannel(-1, SampleDisappear, 0);
 #endif
@@ -383,8 +421,10 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
   // Handle rising
   if(!P->Match && !(retraces & 15))
     P->Rise++;
-  if((!P->Match || P->Flags&LIFT_WHILE_CLEARING) && P->KeyNew[KEY_LIFT])
+  if((!P->Match || P->Flags&LIFT_WHILE_CLEARING) && P->KeyNew[KEY_LIFT]) {
     P->Rise = 16;
+    P->Score++;
+  }
   if(P->Rise >= 16) {
     // push playfield up
     for(int y=0; y<P->Height-1; y++)

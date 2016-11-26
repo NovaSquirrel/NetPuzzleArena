@@ -159,6 +159,7 @@ struct Playfield {
   int KeyNew[KEY_COUNT];
   int KeyRepeat[KEY_COUNT];
   int *Playfield;
+  uint32_t Score;
 
   // Frenzy
   int Rise;
