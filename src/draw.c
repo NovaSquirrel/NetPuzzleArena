@@ -43,7 +43,7 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
 
   // Draw tiles
   for(int x=0; x<P->Width; x++)
-    for(int y=0; y<P->Height; y++) {
+    for(int y=0; y<P->Height-1; y++) {
       int Tile = P->Playfield[P->Width * y + x]&PF_COLOR;
       if(!Tile)
         continue;
@@ -52,6 +52,12 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
       DrawText(GameFont, DrawX+x*TILE_W, DrawY+y*TILE_H-Rise, 0, "%i", (P->Playfield[P->Width * y + x]&PF_CHAIN)>>8);
 #endif
     }
+  // draw the bottom row
+  for(int x=0; x<P->Width; x++) {
+    int Tile = P->Playfield[P->Width * (P->Height-1) + x]&PF_COLOR;
+    blit(TileSheet, ScreenRenderer, TILE_W*Tile, TILE_H*2, DrawX+x*TILE_W, DrawY+(P->Height-1)*TILE_H-Rise, TILE_W, TILE_H);
+  }
+
   // Draw exploding blocks
   for(struct MatchRow *Heads = P->Match; Heads; Heads=Heads->Next) {
     int SourceY = Heads->Timer1?TILE_H:TILE_H*2;
