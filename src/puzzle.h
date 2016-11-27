@@ -20,7 +20,7 @@
 #define PUZZLE_HEADER
 #define NO_STDIO_REDIRECT
 
-#define FAST_MODE 1
+//#define FAST_MODE 1
 #define ENABLE_AUDIO 1
 #define ENABLE_SOUNDS 1
 //#define ENABLE_MUSIC 1
@@ -61,7 +61,7 @@ extern struct Playfield Player1;
 extern char *PrefPath;
 
 #ifdef ENABLE_AUDIO
-extern Mix_Chunk *SampleSwap, *SampleDrop, *SampleDisappear, *SampleMove;
+extern Mix_Chunk *SampleSwap, *SampleDrop, *SampleDisappear, *SampleMove, *SampleCombo;
 #endif
 
 enum GameTypes {

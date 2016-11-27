@@ -35,11 +35,10 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
   SDL_SetRenderDrawColor(ScreenRenderer, 8, 8, 8, 255);
   SDL_RenderFillRect(ScreenRenderer, NULL);
 #else
-  for(int y=0; y<VisualHeight; y++) {
-    int Value = (float)y / VisualHeight * 255;
-    SDL_SetRenderDrawColor(ScreenRenderer, Value, Value, Value, 255);
-    SDL_RenderDrawLine(ScreenRenderer, DrawX, DrawY+y, DrawX+VisualWidth-1, DrawY+y);
-  }
+  SDL_SetRenderDrawBlendMode(ScreenRenderer, SDL_BLENDMODE_BLEND);
+  SDL_SetRenderDrawColor(ScreenRenderer, 8, 8, 8, 128);
+  SDL_RenderFillRect(ScreenRenderer, NULL);
+  SDL_SetRenderDrawBlendMode(ScreenRenderer, SDL_BLENDMODE_NONE);
 #endif
 
   // Draw tiles

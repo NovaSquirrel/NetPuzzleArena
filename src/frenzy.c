@@ -56,6 +56,11 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
       if(MaxActiveChain < ((Tile&PF_CHAIN)>>8))
         MaxActiveChain = (Tile&PF_CHAIN)>>8;
     }
+  // Also look at clearing blocks for chain counts
+  for(struct MatchRow *Match = P->Match; Match; Match=Match->Next) {
+    if(MaxActiveChain < (Match->Chain>>8))
+      MaxActiveChain = (Match->Chain>>8);
+  }
 
   // Cursor movement
   if(P->SwapTimer) {
@@ -232,6 +237,9 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
     if(MaxActiveChain)
       P->Score += PointsForChainPart(MaxActiveChain-1);
   }
+  if(ComboSize >= 4 || (ComboSize == 3 && ComboChainSize))
+    Mix_PlayChannel(-1, SampleCombo, 0);
+
 //    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Combo of size %i", ComboSize);
 
   if(FirstMatch) {

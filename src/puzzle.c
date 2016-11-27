@@ -25,6 +25,7 @@ SDL_Renderer *ScreenRenderer = NULL;
 SDL_Texture *IconTexture = NULL;
 SDL_Texture *TileSheet = NULL;
 SDL_Texture *GameFont = NULL;
+SDL_Texture *GameBG = NULL;
 TTF_Font *ChatFont = NULL;
 SDL_Surface *IconSurface = NULL;
 SDL_Surface *WindowIcon = NULL;
@@ -36,7 +37,7 @@ struct Playfield Player1;
 int ScaleFactor = 1, NoAcceleration = 0;
 
 #ifdef ENABLE_AUDIO
-  Mix_Chunk *SampleSwap, *SampleDrop, *SampleDisappear, *SampleMove;
+  Mix_Chunk *SampleSwap, *SampleDrop, *SampleDisappear, *SampleMove, *SampleCombo;
 #endif
 
 void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY);
@@ -102,6 +103,7 @@ int main(int argc, char *argv[]) {
   SDL_SetWindowIcon(window, WindowIcon);
 
   TileSheet = LoadTexture("data/gfx.png", 0);
+  GameBG = LoadTexture("data/gamebg.png", 0);
   SDL_SetRenderDrawColor(ScreenRenderer, 0, 0, 0, 255);
   SDL_RenderClear(ScreenRenderer); 
   DrawText(GameFont, ScreenWidth/2, ScreenHeight/2, TEXT_CENTERED, "Initializing");
@@ -119,10 +121,12 @@ int main(int argc, char *argv[]) {
   SampleSwap = Mix_LoadWAV("data/swap.wav");
   SampleDrop = Mix_LoadWAV("data/drop.wav");
   SampleDisappear = Mix_LoadWAV("data/disappear.wav");
+  SampleCombo = Mix_LoadWAV("data/combo.wav");
   Mix_VolumeChunk(SampleMove, MIX_MAX_VOLUME/2);
   Mix_VolumeChunk(SampleSwap, MIX_MAX_VOLUME/2);
   Mix_VolumeChunk(SampleDrop, MIX_MAX_VOLUME/2);
   Mix_VolumeChunk(SampleDisappear, MIX_MAX_VOLUME/2);
+  Mix_VolumeChunk(SampleCombo, MIX_MAX_VOLUME/2);
 
   ShowTitle();
 
@@ -155,6 +159,7 @@ int main(int argc, char *argv[]) {
     UpdateKeys(&Player1);
 
     UpdatePlayfield(&Player1);
+    SDL_RenderCopy(ScreenRenderer, GameBG, NULL, NULL);
     DrawPlayfield(&Player1, (ScreenWidth/2)-(Player1.Width*TILE_W)/2, (ScreenHeight/2)-((Player1.Height-1)*TILE_H)/2);
     DrawText(GameFont, (ScreenWidth/2), 10*ScaleFactor, TEXT_CENTERED, "%i", Player1.Score);
 
