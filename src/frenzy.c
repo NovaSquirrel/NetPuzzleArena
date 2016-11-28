@@ -391,10 +391,10 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
         SetTile(P, F->X, y, GetTile(P, F->X, y-1));
       SetTile(P, F->X, F->Y, BLOCK_EMPTY);
       F->Y++;
-    } else if(ColorAtBottom == BLOCK_DISABLED) {
-      F->Timer = HOVER_TIME;
-      F = Next;
-      continue;
+//    } else if(ColorAtBottom == BLOCK_DISABLED) {
+//      F->Timer = HOVER_TIME;
+//      F = Next;
+//      continue;
     } else if(ColorAtBottom && !IsFalling[F->X][F->Y + F->Height]) {
       PlayDropSound = 1;
       Free = 1;
@@ -427,13 +427,21 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 /////////////////// RISING ///////////////////
 
   // Handle rising
-  if(!P->Match && !(retraces & 15))
-    P->Rise++;
-  if((!P->Match || P->Flags&LIFT_WHILE_CLEARING) && P->KeyNew[KEY_LIFT]) {
-    P->Rise = 16;
+  if(!P->LiftKeyOn && !P->RiseStopTimer && (!P->Match || P->Flags&LIFT_WHILE_CLEARING) && P->KeyDown[KEY_LIFT]) {
     P->Score++;
+    P->LiftKeyOn = 1;
+    P->RiseStopTimer = 10;
   }
+
+  if(P->LiftKeyOn)
+    P->Rise++;
+  else if(P->RiseStopTimer)
+    P->RiseStopTimer--;
+  else if(!P->Match && !(retraces & 15))
+    P->Rise++;
   if(P->Rise >= 16) {
+    P->LiftKeyOn = 0;
+
     // push playfield up
     for(int y=0; y<P->Height-1; y++)
       for(int x=0; x<P->Width; x++)

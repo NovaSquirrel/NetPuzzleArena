@@ -163,6 +163,7 @@ struct Playfield {
 
   // Frenzy
   int Rise;
+  int LiftKeyOn, RiseStopTimer;
   int SwapTimer, SwapColor1, SwapColor2;
   struct MatchRow *Match;
   struct FallingChunk *FallingData;
