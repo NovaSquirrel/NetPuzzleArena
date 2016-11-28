@@ -137,6 +137,11 @@ struct GarbageSlab {
   struct GarbageSlab *Next;
 };
 
+struct ComboNumber {
+  int X, Y, Number, Flags, Timer;
+  struct ComboNumber *Next;
+};
+
 struct MatchRow {
   int Color; // color of the row
   int X, Y;  // position in the playfield of the row
@@ -168,6 +173,7 @@ struct Playfield {
   int SwapTimer, SwapColor1, SwapColor2;
   struct MatchRow *Match;
   struct FallingChunk *FallingData;
+  struct ComboNumber *ComboNumbers;
 
   // Falling blocks
   int FallTimer;

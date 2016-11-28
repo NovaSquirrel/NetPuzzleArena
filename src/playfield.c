@@ -179,6 +179,24 @@ void UpdateStacker(struct Playfield *P) {
 }
 
 void UpdatePlayfield(struct Playfield *P) {
+  for(struct ComboNumber *Num = P->ComboNumbers; Num;) {
+    struct ComboNumber *Next = Num->Next;
+
+    Num->Timer--;
+    if(!Num->Timer) {
+      if(P->ComboNumbers == Num)
+        P->ComboNumbers = Next;
+      else {
+        // find the previous one and make it point to the next
+        struct ComboNumber *Prev = P->ComboNumbers;
+        while(Prev->Next != Num)
+          Prev = Prev->Next;
+        Prev->Next = Next;
+      }
+      free(Num);
+    }
+    Num = Next;
+  }
 
   switch(P->GameType) {
     case FRENZY:

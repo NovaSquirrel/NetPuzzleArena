@@ -237,8 +237,24 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
     if(MaxActiveChain)
       P->Score += PointsForChainPart(MaxActiveChain-1);
   }
-  if(ComboSize >= 4 || (ComboSize == 3 && ComboChainSize))
+  if(ComboSize >= 4 || (ComboSize == 3 && ComboChainSize)) {
     Mix_PlayChannel(-1, SampleCombo, 0);
+
+    struct ComboNumber *Num = (struct ComboNumber*)malloc(sizeof(struct ComboNumber));
+    // I guess I have to do a centroid here, but for now I'll use the middle of the screen
+    Num->X = P->Width*TILE_W/2;        //ComboTotalX/ComboSize * TILE_W + TILE_W/2;
+    Num->Y = (P->Height-1)*TILE_H/2;   //ComboTotalY/ComboSize * TILE_H + TILE_H/2;
+    if(ComboChainSize) {
+      Num->Number = (ComboChainSize>>8)+1;
+      Num->Flags = TEXT_CHAIN|TEXT_CENTERED;
+    } else {
+      Num->Number = ComboSize;
+      Num->Flags = TEXT_CENTERED;
+    }
+    Num->Timer = 30;
+    Num->Next = P->ComboNumbers;
+    P->ComboNumbers = Num;
+  }
 
 //    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Combo of size %i", ComboSize);
 

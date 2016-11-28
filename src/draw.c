@@ -87,6 +87,10 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
   } else
     blit(TileSheet, ScreenRenderer, 0, TILE_H, DrawX+P->CursorX*TILE_W, DrawY+P->CursorY*TILE_H-Rise, TILE_W, TILE_H);
 
+  // Draw floating numbers
+  for(struct ComboNumber *Num = P->ComboNumbers; Num; Num=Num->Next)
+    DrawTallInteger(DrawX+Num->X, DrawY+Num->Y-Rise, Num->Flags, Num->Number);
+
   SDL_RenderSetClipRect(ScreenRenderer, NULL);
 }
 
