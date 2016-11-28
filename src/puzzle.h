@@ -123,7 +123,8 @@ enum GameplayOptions {
   LIFT_WHILE_CLEARING = 2,
   PULL_BLOCK_HORIZONTAL = 4,
   MOUSE_CONTROL = 8,
-  NO_AUTO_REPEAT = 16
+  NO_AUTO_REPEAT = 16,
+  INSTANT_LIFT = 32
 };
 
 struct FallingChunk {
@@ -191,6 +192,7 @@ enum TextDrawFlags {
   TEXT_WHITE = 2,
   TEXT_WRAPPED = 4,
   TEXT_FROM_BOTTOM = 8,
+  TEXT_CHAIN = 16
 };
 
 void SDL_MessageBox(int Type, const char *Title, SDL_Window *Window, const char *fmt, ...);
@@ -206,6 +208,7 @@ void blitz(SDL_Texture* SrcBmp, SDL_Renderer* DstBmp, int SourceX, int SourceY, 
 void blitfull(SDL_Texture* SrcBmp, SDL_Renderer* DstBmp, int DestX, int DestY);
 void DrawText(SDL_Texture* Font, int DestX, int DestY, int Flags, const char *fmt, ...);
 int DrawTextTTF(TTF_Font* Font, int DestX, int DestY, int Flags, const char *fmt, ...);
+void DrawTallInteger(int DestX, int DestY, int Flags, int Number);
 void UpdatePlayfield(struct Playfield *P);
 int GetTile(struct Playfield *P, int X, int Y);
 int GetColor(struct Playfield *P, int X, int Y);

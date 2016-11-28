@@ -13,4 +13,5 @@ Dependencies
 Credits
 -------
 - [game background](http://opengameart.org/content/bevouliin-free-game-background-for-game-developers) by Bevouliin
-- Orchestra hits from [http://soundpacks.com/free-sound-packs/orchestral-hits-sound-pack/](soundpacks.com).
+- Orchestra hits from [soundpacks.com](http://soundpacks.com/free-sound-packs/orchestral-hits-sound-pack/).
+- TTF font: [Denjuu World](http://fontstruct.com/fontstructions/show/1106034/denjuu_world)

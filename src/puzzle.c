@@ -157,8 +157,8 @@ int main(int argc, char *argv[]) {
     }
 
     UpdateKeys(&Player1);
-
     UpdatePlayfield(&Player1);
+
     SDL_RenderCopy(ScreenRenderer, GameBG, NULL, NULL);
     DrawPlayfield(&Player1, (ScreenWidth/2)-(Player1.Width*TILE_W)/2, (ScreenHeight/2)-((Player1.Height-1)*TILE_H)/2);
     DrawText(GameFont, (ScreenWidth/2), 10*ScaleFactor, TEXT_CENTERED, "%i", Player1.Score);

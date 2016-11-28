@@ -155,3 +155,26 @@ int DrawTextTTF(TTF_Font* Font, int DestX, int DestY, int Flags, const char *fmt
 
   return MessageHeight;
 }
+
+void DrawTallInteger(int DestX, int DestY, int Flags, int Number) {
+  const int CharWidth = 8*ScaleFactor;
+  const int CharHeight = 16*ScaleFactor;
+  char Buffer[20];
+  sprintf(Buffer, "%i", Number);
+  int Length = strlen(Buffer) + (0 != (Flags&TEXT_CHAIN));
+
+  if(Flags&TEXT_CENTERED) {
+    DestX -= Length*CharWidth/2;
+    DestY -= CharHeight/2;
+  }
+
+  if(Flags&TEXT_CHAIN) {
+    blit(TileSheet, ScreenRenderer, 10*CharWidth, TILE_H*5, DestX, DestY, CharWidth, CharHeight);
+    DestX += CharWidth;
+  }
+
+  for(char *Pointer = Buffer; *Pointer; Pointer++) {
+    blit(TileSheet, ScreenRenderer, (*Pointer-'0')*CharWidth, TILE_H*5, DestX, DestY, CharWidth, CharHeight);
+    DestX += CharWidth;
+  }
+}
