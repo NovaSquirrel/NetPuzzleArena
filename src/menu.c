@@ -73,7 +73,7 @@ void JoypadConfig(int Id, SDL_Joystick *joy) {
 
   const char *JoypadName;
   if(joy)
-    JoypadName = SDL_JoystickNameForIndex(Id);
+    JoypadName = SDL_JoystickName(joy);
   else
     JoypadName = "Keyboard";
 
@@ -153,15 +153,17 @@ void JoypadConfig(int Id, SDL_Joystick *joy) {
     SDL_Delay(17);
   }
 
-  KeymapPathForJoystick(joy);
-  FILE *File = fopen(TempString, "wb");
-  if(!File)
-    LogMessage("Couldn't open %s to write key config", TempString);
-  else {
-    fprintf(File, "1\r\n%s\r\n", JoypadName);
-    for(int i=0; i<KEY_COUNT; i++)
-      fprintf(File, "%c %i %i\r\n", KeyList[i].Type, KeyList[i].Which, KeyList[i].Value);
-    fclose(File);
+  if(!quit) {
+    KeymapPathForJoystick(joy);
+    FILE *File = fopen(TempString, "wb");
+    if(!File)
+      LogMessage("Couldn't open %s to write key config", TempString);
+    else {
+      fprintf(File, "1\r\n%s\r\n", JoypadName);
+      for(int i=0; i<KEY_COUNT; i++)
+        fprintf(File, "%c %i %i\r\n", KeyList[i].Type, KeyList[i].Which, KeyList[i].Value);
+      fclose(File);
+    }
   }
 Exit:
   SDL_DestroyTexture(GameController);
@@ -219,7 +221,7 @@ void DiscoverJoysticks() {
       KeymapPathForJoystick(joy);
       Test = fopen(TempString, "rb");
       if(!Test) {
-        JoypadConfig(i, joy);
+        JoypadConfig(SDL_JoystickInstanceID(joy), joy);
         Test = fopen(TempString, "rb");
       }
       if(Test) {
