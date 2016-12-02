@@ -295,7 +295,7 @@ void ShowMainOptions() {
         quit = 1;
     }
 
-    CombinedUpdateKeys(&Player1);
+    int WhichJoystick = CombinedUpdateKeys(&Player1);
 
     if(!Initial && !MenuKeysPressed(&Player1))
       continue;
@@ -313,8 +313,14 @@ void ShowMainOptions() {
     }
 
     if(Player1.KeyNew[KEY_OK]) {
-      if(Choice == 0)
-        ;
+      if(Choice == 0) {
+        int Id = -1;
+        // 0 is keyboard
+        if(WhichJoystick != 0) {
+          Id = SDL_JoystickInstanceID(ActiveJoysticks[WhichJoystick].Joy);
+        }
+        JoypadConfig(Id, ActiveJoysticks[WhichJoystick].Joy);
+      }
       if(Choice == 1)
         ;
       if(Choice == 2)
