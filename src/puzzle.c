@@ -32,6 +32,9 @@ SDL_Surface *WindowIcon = NULL;
 int quit = 0;
 int retraces = 0;
 struct Playfield Player1;
+char TempString[1024];
+
+struct JoypadMapping ActiveJoysticks[ACTIVE_JOY_MAX];
 
 // config flags
 int ScaleFactor = 1, NoAcceleration = 0;
@@ -44,30 +47,68 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY);
 void SetGameDefaults(struct Playfield *P, int Game);
 void InitPlayfield(struct Playfield *P);
 int ShowTitle();
-void MainMenu();
+void ShowMainOptions();
+
+void GameplayStart() {
+  memset(&Player1, 0, sizeof(struct Playfield));
+  Player1.Flags = LIFT_WHILE_CLEARING;
+  SetGameDefaults(&Player1, FRENZY);
+  InitPlayfield(&Player1);
+
+  while(!quit) {
+    SDL_Event e;
+    while(SDL_PollEvent(&e) != 0) {
+      if(e.type == SDL_QUIT)
+        quit = 1;
+    }
+
+    CombinedUpdateKeys(&Player1);
+    UpdatePlayfield(&Player1);
+
+    SDL_RenderCopy(ScreenRenderer, GameBG, NULL, NULL);
+    DrawPlayfield(&Player1, (ScreenWidth/2)-(Player1.Width*TILE_W)/2, (ScreenHeight/2)-((Player1.Height-1)*TILE_H)/2);
+    DrawText(GameFont, (ScreenWidth/2), 10*ScaleFactor, TEXT_CENTERED, "%i", Player1.Score);
+
+//    DrawPlayfield(&Player1, 8*ScaleFactor, (ScreenHeight/2)-((Player1.Height-1)*TILE_H)/2);
+//    DrawPlayfield(&Player1, ScreenWidth-8*ScaleFactor-(Player1.Width*TILE_W), (ScreenHeight/2)-((Player1.Height-1)*TILE_H)/2);
+
+    SDL_RenderPresent(ScreenRenderer);
+    if(retraces % 3)
+      SDL_Delay(17);
+    else
+      SDL_Delay(16);
+
+    retraces++;
+  }
+}
 
 int main(int argc, char *argv[]) {
-  // read parameters
-  for(int i=1; i<argc; i++) {
-    if(!strcmp(argv[i], "-scale") && ScaleFactor == 1) {
-      ScaleFactor = strtol(argv[i+1], NULL, 10);
-      TILE_W *= ScaleFactor;
-      TILE_H *= ScaleFactor;
-      ScreenWidth *= ScaleFactor;
-      ScreenHeight *= ScaleFactor;
-    }
-    if(!strcmp(argv[i], "-noaccel"))
-      NoAcceleration = 1;
-  }
-
   // seed the randomizer
   srand(time(NULL));
 
   PrefPath = SDL_GetPrefPath("Bushytail Software", "NetPuzzleArena");
+  GetConfigPath();
+  ParseINI(fopen(TempString, "rb"), INIConfigHandler);
+
+  // read parameters
+  for(int i=1; i<argc; i++) {
+    if(!strcmp(argv[i], "-scale"))
+      ScaleFactor = strtol(argv[i+1], NULL, 10);
+    if(!strcmp(argv[i], "-noaccel"))
+      NoAcceleration = 1;
+  }
+
+  TILE_W *= ScaleFactor;
+  TILE_H *= ScaleFactor;
+  ScreenWidth *= ScaleFactor;
+  ScreenHeight *= ScaleFactor;
 
   if(SDL_Init(SDL_INIT_VIDEO) < 0){
     printf("SDL could not initialize video! SDL_Error: %s\n", SDL_GetError());
     return -1;
+  }
+  if(SDL_Init(SDL_INIT_JOYSTICK) < 0){
+    printf("SDL could not initialize joystick interface! SDL_Error: %s\n", SDL_GetError());
   }
 
 #ifdef ENABLE_AUDIO
@@ -122,13 +163,23 @@ int main(int argc, char *argv[]) {
   SampleDrop = Mix_LoadWAV("data/drop.wav");
   SampleDisappear = Mix_LoadWAV("data/disappear.wav");
   SampleCombo = Mix_LoadWAV("data/combo.wav");
-  Mix_VolumeChunk(SampleMove, MIX_MAX_VOLUME/2);
-  Mix_VolumeChunk(SampleSwap, MIX_MAX_VOLUME/2);
-  Mix_VolumeChunk(SampleDrop, MIX_MAX_VOLUME/2);
-  Mix_VolumeChunk(SampleDisappear, MIX_MAX_VOLUME/2);
-  Mix_VolumeChunk(SampleCombo, MIX_MAX_VOLUME/2);
+  UpdateVolumes();
 
-  ShowTitle();
+  memset(&ActiveJoysticks, 0, sizeof(ActiveJoysticks));
+  while(!quit)
+    switch(ShowTitle()) {
+      case 0:
+        GameplayStart();
+        break;
+      case 1:
+        break;
+      case 2:
+        ShowMainOptions();
+        break;
+      case 3:
+        quit = 1;
+        break;
+    }
 
 #ifdef ENABLE_MUSIC
   Mix_Music *music;
@@ -138,46 +189,9 @@ int main(int argc, char *argv[]) {
 #endif
 #endif
 
-  memset(&Player1, 0, sizeof(struct Playfield));
-  Player1.Flags = LIFT_WHILE_CLEARING;
-  SetGameDefaults(&Player1, FRENZY);
-  InitPlayfield(&Player1);
-
-  SDL_SetRenderDrawColor(ScreenRenderer, 128, 128, 128, 255);
-  SDL_RenderClear(ScreenRenderer); 
-
-//  DrawTextTTF(ChatFont, 0, 1*ScaleFactor, TEXT_WHITE|TEXT_WRAPPED, "Is this a pretty decent amount of text for chat messages? With word wrap you've got two lines of text.");
-//  DrawTextTTF(ChatFont, 0, ScreenHeight-(1*ScaleFactor), TEXT_FROM_BOTTOM|TEXT_WHITE|TEXT_WRAPPED, "The second player's messages can go on the bottom or something.");
-
-  while(!quit) {
-    SDL_Event e;
-    while(SDL_PollEvent(&e) != 0) {
-      if(e.type == SDL_QUIT)
-        quit = 1;
-    }
-
-    UpdateKeys(&Player1);
-    UpdatePlayfield(&Player1);
-
-    SDL_RenderCopy(ScreenRenderer, GameBG, NULL, NULL);
-    DrawPlayfield(&Player1, (ScreenWidth/2)-(Player1.Width*TILE_W)/2, (ScreenHeight/2)-((Player1.Height-1)*TILE_H)/2);
-    DrawText(GameFont, (ScreenWidth/2), 10*ScaleFactor, TEXT_CENTERED, "%i", Player1.Score);
-
-//    DrawPlayfield(&Player1, 8*ScaleFactor, (ScreenHeight/2)-((Player1.Height-1)*TILE_H)/2);
-//    DrawPlayfield(&Player1, ScreenWidth-8*ScaleFactor-(Player1.Width*TILE_W), (ScreenHeight/2)-((Player1.Height-1)*TILE_H)/2);
-
-    SDL_RenderPresent(ScreenRenderer);
-    if(retraces % 3)
-      SDL_Delay(17);
-    else
-      SDL_Delay(16);
-
-    retraces++;
-  }
-
+  SaveConfigINI();
   // close resources
   TTF_CloseFont(ChatFont);
-	
   if(PrefPath) SDL_free(PrefPath);
 #ifdef ENABLE_AUDIO
   Mix_CloseAudio();

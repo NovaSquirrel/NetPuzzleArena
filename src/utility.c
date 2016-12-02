@@ -18,9 +18,62 @@
  */
 #include "puzzle.h"
 #include <math.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 int DirX[] = {1, 1, 0, -1, -1, -1, 0, 1};
 int DirY[] = {0, 1, 1, 1, 0, -1, -1, -1};
+float SFXVolume = 50;
+float BGMVolume = 100;
+
+void UpdateVolumes() {
+  float SFX = SFXVolume / 100 * MIX_MAX_VOLUME;
+  Mix_VolumeChunk(SampleMove, SFX);
+  Mix_VolumeChunk(SampleSwap, SFX);
+  Mix_VolumeChunk(SampleDrop, SFX);
+  Mix_VolumeChunk(SampleDisappear, SFX);
+  Mix_VolumeChunk(SampleCombo, SFX);
+}
+
+int MakeDirectory(const char *Path) {
+#ifdef _WIN32
+  return CreateDirectory(Path, NULL);
+#else
+  return !mkdir(Path, 0700);
+#endif
+}
+
+char *FindCloserPointer(char *A, char *B) {
+  if(!A) // doesn't matter if B is NULL too, it'll just return the NULL
+    return B;
+  if(!B || A < B)
+    return A;
+  return B;
+}
+
+int CreateDirectoriesForPath(const char *Folders) {
+  char Temp[strlen(Folders)+1];
+  strcpy(Temp, Folders);
+  struct stat st = {0};
+
+  char *Try = Temp;
+  if(Try[1] == ':' && Try[2] == '\\') // ignore drive names
+    Try = FindCloserPointer(strchr(Try+3, '/'), strchr(Try+3, '\\'));
+
+  while(Try) {
+    char Restore = *Try;
+    *Try = 0;
+    if(stat(Temp, &st) == -1) {
+      MakeDirectory(Temp);
+      if(stat(Temp, &st) == -1)
+        return 0;
+    }
+    *Try = Restore;
+    Try = FindCloserPointer(strchr(Try+1, '/'), strchr(Try+1, '\\'));
+  }
+  return 1;
+}
 
 void SDL_MessageBox(int Type, const char *Title, SDL_Window *Window, const char *fmt, ...) {
   va_list argp;
@@ -53,6 +106,17 @@ int Random(int Choices) {
     if(Out < Choices)
       return Out;
   }
+}
+
+void GetConfigPath() {
+  sprintf(TempString, "%sconfig.ini", PrefPath);
+}
+
+void LogMessage(const char *fmt, ...) {
+  va_list args;
+  va_start(args, fmt);
+  SDL_LogMessageV(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO, fmt, args);
+  va_end(args);
 }
 
 void strlcpy(char *Destination, const char *Source, int MaxLength) {
@@ -148,19 +212,36 @@ void blitfull(SDL_Texture* SrcBmp, SDL_Renderer* DstBmp, int DestX, int DestY) {
   SDL_RenderCopy(DstBmp,  SrcBmp, NULL, &Dst);
 }
 
-void UpdateKeys(struct Playfield *P) {
+void UpdateKeysFromMap(struct JoypadMapping *Map, int *Out) {
   const Uint8 *Keyboard = SDL_GetKeyboardState(NULL);
-  P->KeyDown[KEY_LEFT] = Keyboard[SDL_SCANCODE_LEFT];
-  P->KeyDown[KEY_DOWN] = Keyboard[SDL_SCANCODE_DOWN];
-  P->KeyDown[KEY_UP] = Keyboard[SDL_SCANCODE_UP];
-  P->KeyDown[KEY_RIGHT] = Keyboard[SDL_SCANCODE_RIGHT];
-  P->KeyDown[KEY_OK] = Keyboard[SDL_SCANCODE_RETURN];
-  P->KeyDown[KEY_BACK] = Keyboard[SDL_SCANCODE_BACKSPACE];
-  P->KeyDown[KEY_SWAP] = Keyboard[SDL_SCANCODE_SPACE];
-  P->KeyDown[KEY_LIFT] = Keyboard[SDL_SCANCODE_Z];
-  P->KeyDown[KEY_PAUSE] = Keyboard[SDL_SCANCODE_P];
-  P->KeyDown[KEY_ROTATE_L] = Keyboard[SDL_SCANCODE_X];
-  P->KeyDown[KEY_ROTATE_R] = Keyboard[SDL_SCANCODE_C];
+
+  for(int i=0; i<KEY_COUNT; i++) {
+    char Type = Map->Keys[i][0].Type;
+    int Which = Map->Keys[i][0].Which;
+    int Value = Map->Keys[i][0].Value;
+    int ReadValue;
+
+    switch(Type) {
+      case 'h':
+        ReadValue =  SDL_JoystickGetHat(Map->Joy, Which);
+        Out[i] = ReadValue & Value;
+        break;
+      case 'b':
+        Out[i] = SDL_JoystickGetButton(Map->Joy, Which);
+        break;
+      case 'k':
+        Out[i] = Keyboard[Which];
+        break;
+      default:
+        Out[i] = 0;
+        break;
+    }
+  }
+
+}
+
+void UpdateKeysExtra(struct Playfield *P) {
+  const Uint8 *Keyboard = SDL_GetKeyboardState(NULL);
   if(Keyboard[SDL_SCANCODE_ESCAPE])
     quit = 1;
 
@@ -179,4 +260,29 @@ void UpdateKeys(struct Playfield *P) {
     }
   }
   memcpy(P->KeyLast, P->KeyDown, sizeof(P->KeyDown));
+}
+
+int CombinedUpdateKeys(struct Playfield *P) {
+  int UsedController = -1;
+  memset(P->KeyDown, 0, sizeof(P->KeyDown));
+
+  int KeyDown[KEY_COUNT];
+  for(int i=0; i<ACTIVE_JOY_MAX; i++) {
+    if(!ActiveJoysticks[i].Active)
+      continue;
+    UpdateKeysFromMap(&ActiveJoysticks[i], KeyDown);
+    for(int j=0; j<KEY_COUNT; j++)
+      P->KeyDown[j] |= KeyDown[j];
+    if(KeyDown[KEY_OK])
+      UsedController = i;
+  }
+
+  UpdateKeysExtra(P);
+
+  return UsedController;
+}
+
+void UpdateKeys(struct Playfield *P) {
+  UpdateKeysFromMap(&ActiveJoysticks[P->Joystick], P->KeyDown);
+  UpdateKeysExtra(P);
 }

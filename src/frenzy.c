@@ -83,12 +83,12 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
     if(P->KeyNew[KEY_RIGHT])
       P->CursorX += (P->CursorX != P->Width-2);
 
-    if(P->Flags & PULL_BLOCK_HORIZONTAL && OldX != P->CursorX && P->KeyDown[KEY_SWAP])
-      P->KeyNew[KEY_SWAP] = 1;
+//    if(P->Flags & PULL_BLOCK_HORIZONTAL && OldX != P->CursorX && P->KeyDown[KEY_SWAP])
+//      P->KeyNew[KEY_SWAP] = 1;
 //    if((OldX != P->CursorX || OldY != P->CursorY) && !UsedAutorepeat)
 //      Mix_PlayChannel(-1, SampleMove, 0);
 
-    if(P->KeyNew[KEY_SWAP]) {
+    if(P->KeyNew[KEY_ROTATE_L] || P->KeyNew[KEY_ROTATE_R]) {
       int Tile1 = GetTile(P, P->CursorX, P->CursorY);
       int Tile2 = GetTile(P, P->CursorX+1, P->CursorY);
       if(Tile1 != BLOCK_DISABLED && Tile2 != BLOCK_DISABLED

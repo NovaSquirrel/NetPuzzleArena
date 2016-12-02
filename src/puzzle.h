@@ -43,6 +43,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #endif
+#ifdef _WIN32
+#else
+#include <linux/limits.h>
+#endif
 
 extern int ScreenWidth, ScreenHeight;
 extern SDL_Window *window;
@@ -59,6 +63,9 @@ extern int ScaleFactor;
 extern int quit;
 extern struct Playfield Player1;
 extern char *PrefPath;
+extern float SFXVolume;
+extern float BGMVolume;
+extern char TempString[1024];
 
 #ifdef ENABLE_AUDIO
 extern Mix_Chunk *SampleSwap, *SampleDrop, *SampleDisappear, *SampleMove, *SampleCombo;
@@ -94,12 +101,12 @@ enum GameKey {
   KEY_BACK,
   KEY_PAUSE,
   KEY_ACTION,
-  KEY_ROTATE_L, // counter clockwise
-  KEY_ROTATE_R, // clockwise
+  KEY_ITEM,
+  KEY_ROTATE_L, // counter clockwise, also swap
+  KEY_ROTATE_R, // clockwise, also swap
   KEY_LIFT,
   KEY_COUNT,
-
-  KEY_SWAP = KEY_ACTION
+  KEY_SWAP = KEY_ROTATE_L
 };
 
 enum BlockColor {
@@ -154,6 +161,20 @@ struct MatchRow {
   struct MatchRow *Child, *Next;
 };
 
+struct JoypadKey {
+  char Type; // [k]eyboard, [b]utton, [a]xe, [h]at
+  int Which; // which keyboard key, button, axe, or hat?
+  int Value; // SDL_HAT_UP and such, or 1 or -1
+};
+
+struct JoypadMapping {
+  int Active;
+  SDL_Joystick *Joy;
+  struct JoypadKey Keys[KEY_COUNT][2];
+};
+#define ACTIVE_JOY_MAX 7
+extern struct JoypadMapping ActiveJoysticks[ACTIVE_JOY_MAX];
+
 struct Playfield {
   int GameType;
   int Width, Height;
@@ -186,6 +207,8 @@ struct Playfield {
   // Game rules
   int MinMatchSize; // how many matching tiles are needed
   int ColorCount;
+
+  int Joystick;
 };
 
 // different parts of the playfield int
@@ -201,6 +224,9 @@ enum TextDrawFlags {
   TEXT_CHAIN = 16
 };
 
+void INIConfigHandler(const char *Group, const char *Item, const char *Value);
+int ParseINI(FILE *File, void (*Handler)(const char *Group, const char *Item, const char *Value));
+void SaveConfigINI();
 void SDL_MessageBox(int Type, const char *Title, SDL_Window *Window, const char *fmt, ...);
 void strlcpy(char *Destination, const char *Source, int MaxLength);
 SDL_Surface *SDL_LoadImage(const char *FileName, int Flags);
@@ -220,6 +246,7 @@ int GetTile(struct Playfield *P, int X, int Y);
 int GetColor(struct Playfield *P, int X, int Y);
 void SetTile(struct Playfield *P, int X, int Y, int Value);
 void RandomizeRow(struct Playfield *P, int y);
+void LogMessage(const char *fmt, ...);
 
 int RandomTileColor(struct Playfield *P);
 void UpdatePuzzleFrenzy(struct Playfield *P);
@@ -237,3 +264,8 @@ int MakeBlocksFall(struct Playfield *P);
 int TestBlocksFall(struct Playfield *P);
 int ClearAvalancheStyle(struct Playfield *P);
 void UpdateKeys(struct Playfield *P);
+int CombinedUpdateKeys(struct Playfield *P);
+void UpdateKeysFromMap(struct JoypadMapping *Map, int *Out);
+void UpdateVolumes();
+void GetConfigPath();
+void RemoveLineEndings(char *buffer);

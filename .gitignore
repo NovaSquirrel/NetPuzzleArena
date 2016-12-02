@@ -1,4 +1,5 @@
 data/bgm.xm
+bgm
 
 # Object files
 *.o
