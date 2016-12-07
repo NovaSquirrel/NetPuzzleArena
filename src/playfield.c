@@ -89,6 +89,30 @@ int TestBlocksFall(struct Playfield *P) {
   return 0;
 }
 
+void TriggerGarbageClear(struct Playfield *P, int x, int y, int *IsGarbage) {
+  if(x < 0 || y < 0)
+    return;
+  if(x > P->Width || y > P->Height-1)
+    return;
+  if(!IsGarbage[P->Width*y + x])
+    return;
+  if(GetColor(P, x, y) == BLOCK_GARBAGE) {
+  // Is this just a single garbage tile? We can just clear it
+    SetTile(P, x, y, 0);
+  } else {
+  // If it's a bigger garbage slab we need to go through the slab list
+    struct GarbageSlab *FoundSlab = NULL;
+    for(struct GarbageSlab *Slab = P->GarbageSlabs; Slab; Slab = Slab->Next)
+      if(x >= Slab->X && x < (Slab->X+Slab->Width)
+      && y >= Slab->Y && y < (Slab->Y+Slab->Height)) {
+        FoundSlab = Slab;
+        break;
+      }
+    if(!FoundSlab->Clearing)
+      FoundSlab->Clearing = 1;
+  }
+}
+
 int ClearAvalancheStyle(struct Playfield *P) {
   if(MakeBlocksFall(P))
     return 1;

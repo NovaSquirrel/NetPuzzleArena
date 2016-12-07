@@ -70,6 +70,43 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
     }
   }
 
+  // Draw garbage slabs
+  for(struct GarbageSlab *Slab = P->GarbageSlabs; Slab; Slab=Slab->Next) {
+    if(!Slab->Clearing) {
+      if(Slab->Height == 1) {
+        blit(TileSheet, ScreenRenderer, TILE_W*13, TILE_H*3, DrawX+(Slab->X)*TILE_W,               DrawY+Slab->Y*TILE_H-Rise, TILE_W, TILE_H);
+        for(int i=1; i<Slab->Width-1; i++)
+          blit(TileSheet, ScreenRenderer, TILE_W*14, TILE_H*3, DrawX+(Slab->X+i)*TILE_W,           DrawY+Slab->Y*TILE_H-Rise, TILE_W, TILE_H);
+        blit(TileSheet, ScreenRenderer, TILE_W*15, TILE_H*3, DrawX+(Slab->X+Slab->Width-1)*TILE_W, DrawY+Slab->Y*TILE_H-Rise, TILE_W, TILE_H);
+
+      } else {
+        // corners
+        blit(TileSheet, ScreenRenderer, TILE_W*13, TILE_H*0, DrawX+(Slab->X)*TILE_W,               DrawY+Slab->Y*TILE_H-Rise, TILE_W, TILE_H);
+        blit(TileSheet, ScreenRenderer, TILE_W*15, TILE_H*0, DrawX+(Slab->X+Slab->Width-1)*TILE_W, DrawY+Slab->Y*TILE_H-Rise, TILE_W, TILE_H);
+        blit(TileSheet, ScreenRenderer, TILE_W*13, TILE_H*2, DrawX+(Slab->X)*TILE_W,               DrawY+(Slab->Y+Slab->Height-1)*TILE_H-Rise, TILE_W, TILE_H);
+        blit(TileSheet, ScreenRenderer, TILE_W*15, TILE_H*2, DrawX+(Slab->X+Slab->Width-1)*TILE_W, DrawY+(Slab->Y+Slab->Height-1)*TILE_H-Rise, TILE_W, TILE_H);
+        // top/bottom
+        for(int i=1; i<Slab->Width-1; i++) {
+          blit(TileSheet, ScreenRenderer, TILE_W*14, TILE_H*0, DrawX+(Slab->X+i)*TILE_W,             DrawY+Slab->Y*TILE_H-Rise, TILE_W, TILE_H);
+          blit(TileSheet, ScreenRenderer, TILE_W*14, TILE_H*2, DrawX+(Slab->X+i)*TILE_W,             DrawY+(Slab->Y+Slab->Height-1)*TILE_H-Rise, TILE_W, TILE_H);
+        }
+        // left/right
+        for(int i=1; i<Slab->Height-1; i++) {
+          blit(TileSheet, ScreenRenderer, TILE_W*13, TILE_H*1, DrawX+(Slab->X)*TILE_W,                 DrawY+(Slab->Y+i)*TILE_H-Rise, TILE_W, TILE_H);
+          blit(TileSheet, ScreenRenderer, TILE_W*15, TILE_H*1, DrawX+(Slab->X+Slab->Width-1)*TILE_W,   DrawY+(Slab->Y+i)*TILE_H-Rise, TILE_W, TILE_H);
+        }
+        // inside
+        for(int i=1; i<Slab->Width-1; i++)
+          for(int j=1; j<Slab->Height-1; j++)
+            blit(TileSheet, ScreenRenderer, TILE_W*14, TILE_H*1, DrawX+(Slab->X+i)*TILE_W,   DrawY+(Slab->Y+j)*TILE_H-Rise, TILE_W, TILE_H);
+      }
+    } else {
+      for(int i=0; i<Slab->Width; i++)
+        for(int j=0; j<Slab->Height; j++)
+          blit(TileSheet, ScreenRenderer, TILE_W*10, TILE_H*1, DrawX+(Slab->X+i)*TILE_W,   DrawY+(Slab->Y+j)*TILE_H-Rise, TILE_W, TILE_H);
+    }
+  }
+
   // Draw swapping tiles
   if(P->SwapTimer) {
     int Offset = (4-P->SwapTimer)*4*ScaleFactor;

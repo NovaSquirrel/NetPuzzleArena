@@ -55,6 +55,16 @@ void GameplayStart() {
   SetGameDefaults(&Player1, FRENZY);
   InitPlayfield(&Player1);
 
+/*
+  struct GarbageSlab *Slab = (struct GarbageSlab*)malloc(sizeof(struct GarbageSlab));
+  memset(Slab, 0, sizeof(struct GarbageSlab));
+  Slab->X = 1;
+  Slab->Y = 1;
+  Slab->Width = 2;
+  Slab->Height = 3;
+  Player1.GarbageSlabs = Slab;
+*/
+
   while(!quit) {
     SDL_Event e;
     while(SDL_PollEvent(&e) != 0) {

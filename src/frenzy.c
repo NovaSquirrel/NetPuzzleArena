@@ -20,6 +20,33 @@
 
 #define HOVER_TIME 12
 
+// Takes a combo size (in number of tiles) and figures out how much garbage it amounts to
+int GarbageForCombo(struct Playfield *P, int ComboSize, int *List, int ListSize) {
+  int Width = P->Width;
+  ComboSize--; // garbage tiles is combo tiles minus 1
+
+  int Count = 0;
+  // Keep generating garbage slabs until enough have been made
+  while(ComboSize > 0 && Count <=ListSize) {
+    int PieceSize;
+
+    // If the next one is small enough then just go for it
+    if(ComboSize <= Width)
+      PieceSize = ComboSize;
+    // if it's not, make sure the one after this is big enough
+    else {
+      PieceSize = Width;
+      if((ComboSize - PieceSize) < 3)
+        PieceSize -= 3-(ComboSize-PieceSize);
+    }
+    ComboSize -= PieceSize;
+
+    List[Count++] = PieceSize;
+  }
+  return Count;
+}
+
+// Calculates the number of points to award for a combo of a given size
 int BasePointsForCombo(int Size) {
   // https://www.gamefaqs.com/n64/913924-pokemon-puzzle-league/faqs/16679
   const static int Table[] = {  30,    50,   150,   190,    230,   270,   310,   400,
@@ -34,6 +61,7 @@ int BasePointsForCombo(int Size) {
   return 20400 + ((Size - 40) * 800);
 }
 
+// Calculates the number of points to award for a part of a chain
 int PointsForChainPart(int Size) {
 // Size is the chain number from the original game, minus 1
 // so if you clear blocks and cause a chain, size is 1
@@ -47,20 +75,37 @@ int PointsForChainPart(int Size) {
 
 void UpdatePuzzleFrenzy(struct Playfield *P) {
   int IsFalling[P->Width][P->Height];
+  int IsGarbage[P->Width * P->Height];
   int MaxActiveChain = 0;
+  int IsChainActive = 0;
+
+  // Mark the tiles that are currently falling for easy checking
   memset(IsFalling, 0, sizeof(IsFalling));
   for(struct FallingChunk *Fall = P->FallingData; Fall; Fall = Fall->Next)
-    for(int h=0; h<Fall->Height; h++) {
+    for(int h=0; h<Fall->Height; h++)
       IsFalling[Fall->X][Fall->Y+h] = 1+!Fall->Timer;
-      int Tile = GetTile(P, Fall->X, Fall->Y+h);
-      if(MaxActiveChain < ((Tile&PF_CHAIN)>>8))
-        MaxActiveChain = (Tile&PF_CHAIN)>>8;
-    }
+
+  // Mark the garbage tiles for easy checking
+  memset(IsGarbage, 0, sizeof(IsGarbage));
+  for(struct GarbageSlab *Slab = P->GarbageSlabs; Slab; Slab = Slab->Next)
+    for(int w=0; w<Slab->Width; w++)
+      for(int h=0; h<Slab->Height; h++)
+        IsGarbage[(P->Width*Slab->Y+h) + Slab->X+w] = 1;
+
   // Also look at clearing blocks for chain counts
   for(struct MatchRow *Match = P->Match; Match; Match=Match->Next) {
+    if(Match->Chain)
+      IsChainActive = 1;
     if(MaxActiveChain < (Match->Chain>>8))
       MaxActiveChain = (Match->Chain>>8);
   }
+  // Apparently I need to look at the playfield for chain counts too
+  for(int x=0; x<P->Width; x++)
+    for(int y=0; y<P->Height-2; y++) {
+      int Chain = GetTile(P, x, y)&PF_CHAIN;
+      if(Chain)
+        IsChainActive = 1;
+    }
 
   // Cursor movement
   if(P->SwapTimer) {
@@ -88,6 +133,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 //    if((OldX != P->CursorX || OldY != P->CursorY) && !UsedAutorepeat)
 //      Mix_PlayChannel(-1, SampleMove, 0);
 
+    // Attempt a swap
     if(P->KeyNew[KEY_ROTATE_L] || P->KeyNew[KEY_ROTATE_R]) {
       int Tile1 = GetTile(P, P->CursorX, P->CursorY);
       int Tile2 = GetTile(P, P->CursorX+1, P->CursorY);
@@ -176,8 +222,13 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 
       if(Vert >= P->MinMatchSize-1 || Horiz >= P->MinMatchSize-1)
         if(MaxChain) {
-          SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Chain %i", MaxChain>>8);
-          P->Score += PointsForChainPart(MaxChain>>8);
+          P->ChainCounter++;
+          // was originally using MaxChain>>8 here but that's not accurate to the original game
+          // which I think can only handle one chain at a time
+          IsChainActive = 1;
+//          SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Chain (maxchain) %i", MaxChain>>8);
+          SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Chain %i", P->ChainCounter);
+          P->Score += PointsForChainPart(P->ChainCounter);
         }
 
       if(Horiz >= P->MinMatchSize-1) {
@@ -186,6 +237,18 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
         Used[x][y] = Horiz+1; // write the width
       }
     }
+
+  if(P->ChainResetTimer) {
+    P->ChainResetTimer--;
+    if(!P->ChainResetTimer) {
+      LogMessage("Chain of length %i ended", P->ChainCounter);
+      P->ChainCounter = 0;
+    }
+  }
+  if(IsChainActive)
+    P->ChainResetTimer = 0;
+  if(!IsChainActive && P->ChainCounter && !P->ChainResetTimer)
+    P->ChainResetTimer = 2;
 
   // create match structs for the matches that are found
   int ComboSize = 0, ComboChainSize = 0;
@@ -197,9 +260,19 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
         ComboChainSize = Chain;
     }
 
+  int MatchULX = -1, MatchULY = -1; // match upper left corner
   for(int y=0; y<P->Height-1; y++)
     for(int x=0; x<P->Width; x++) {
       if(Used[x][y] || UsedV[x][y]) {
+        if(MatchULX < 0) {
+          MatchULX = x;
+          MatchULY = y;
+        }
+        TriggerGarbageClear(P, x-1, y, IsGarbage);
+        TriggerGarbageClear(P, x+1, y, IsGarbage);
+        TriggerGarbageClear(P, x, y-1, IsGarbage);
+        TriggerGarbageClear(P, x, y+1, IsGarbage);
+
         struct MatchRow *Match = (struct MatchRow*)malloc(sizeof(struct MatchRow));
         int Width = Used[x][y];
         if(!Width)
@@ -241,11 +314,10 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
     Mix_PlayChannel(-1, SampleCombo, 0);
 
     struct ComboNumber *Num = (struct ComboNumber*)malloc(sizeof(struct ComboNumber));
-    // I guess I have to do a centroid here, but for now I'll use the middle of the screen
-    Num->X = P->Width*TILE_W/2;        //ComboTotalX/ComboSize * TILE_W + TILE_W/2;
-    Num->Y = (P->Height-1)*TILE_H/2;   //ComboTotalY/ComboSize * TILE_H + TILE_H/2;
-    if(ComboChainSize) {
-      Num->Number = (ComboChainSize>>8)+1;
+    Num->X = MatchULX*TILE_W + TILE_W/2;
+    Num->Y = MatchULY*TILE_H + TILE_H/2;
+    if(P->ChainCounter) {
+      Num->Number = P->ChainCounter+1; //(ComboChainSize>>8)+1;
       Num->Flags = TEXT_CHAIN|TEXT_CENTERED;
     } else {
       Num->Number = ComboSize;
@@ -253,6 +325,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
     }
     Num->Timer = 30;
     Num->Next = P->ComboNumbers;
+    Num->Speed = 0;
     P->ComboNumbers = Num;
   }
 
@@ -308,7 +381,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
         for(Last = Match; Last;) {
           // mark chain counters
          for(int x=Last->X; x<(Last->X+Last->Width); x++) {
-            for(int y=Last->Y; GetColor(P, x, y) && y; y--) {
+            for(int y=Last->Y; GetColor(P, x, y) && y && !IsGarbage[y*P->Width + x]; y--) {
               int Chain = GetTile(P, x, y) & PF_CHAIN;
               if(Chain < Last->Chain+PF_CHAIN_ONE)
                 SetTile(P, x, y, GetColor(P, x, y) | (Last->Chain+PF_CHAIN_ONE));
@@ -325,6 +398,10 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 
   // Change disabled blocks back to regular ones
   memset(Used, 0, sizeof(Used));
+  for(struct GarbageSlab *Slab = P->GarbageSlabs; Slab; Slab=Slab->Next)
+    for(int i=0; i<Slab->Width; i++)
+      for(int j=0; j<Slab->Height; j++)
+        Used[Slab->X+i][Slab->Y+j] = 1;
   for(struct MatchRow *Heads = P->Match; Heads; Heads=Heads->Next)
     for(struct MatchRow *Match = Heads; Match; Match=Match->Child)
       for(int i=0; i<Match->Width; i++)
@@ -440,7 +517,36 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
     Mix_PlayChannel(-1, SampleDrop, 0);
 #endif
 
+  // Make garbage slabs fall too
+  for(struct GarbageSlab *Slab = P->GarbageSlabs; Slab; Slab=Slab->Next) {
+    if(Slab->Clearing)
+      continue;
+    int OkayToFall = 1;
+    int Bottom = Slab->Y + Slab->Height;
+    if(Bottom >= P->Height-1)
+      OkayToFall = 0;
+    else for(int x=Slab->X; x<(Slab->X+Slab->Width); x++)
+      if(GetTile(P, x, Bottom) & PF_COLOR)
+        OkayToFall = 0;
+    if(OkayToFall) {
+      for(int x=Slab->X; x<(Slab->X+Slab->Width); x++) {
+        SetTile(P, x, Slab->Y, 0);
+        SetTile(P, x, Bottom, BLOCK_DISABLED);
+      }
+      Slab->Y++;
+    }
+  }
+
+
 /////////////////// RISING ///////////////////
+
+  // Make combo numbers rise up a bit and stop
+  for(struct ComboNumber *Num = P->ComboNumbers; Num; Num=Num->Next) {
+    if(Num->Timer < 10)
+      Num->Speed = 0;
+    Num->Y-=Num->Speed>>2;
+    Num->Speed++;
+  }
 
   // Handle rising
   if(!P->LiftKeyOn && !P->RiseStopTimer && (!P->Match || P->Flags&LIFT_WHILE_CLEARING) && P->KeyDown[KEY_LIFT]) {
@@ -474,6 +580,13 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
     // also update falling data
     for(struct FallingChunk *Fall = P->FallingData; Fall; Fall = Fall->Next)
       Fall->Y--;
+
+    // move garbage slabs up
+    for(struct GarbageSlab *Slab = P->GarbageSlabs; Slab; Slab=Slab->Next)
+      Slab->Y--;
+
+    for(struct ComboNumber *Num = P->ComboNumbers; Num; Num=Num->Next)
+      Num->Y -= TILE_H;
 
     // move exploding blocks up
     for(struct MatchRow *Heads = P->Match; Heads; Heads=Heads->Next)

@@ -141,11 +141,16 @@ struct FallingChunk {
 
 struct GarbageSlab {
   int X, Y, Width, Height;
+  int Clearing;
+  int Timer1;       // timer for how long until blocks disappear
+  int Timer2;       // timer for making individual blocks disappear
+  int DisplayWidth; // width to display
   struct GarbageSlab *Next;
 };
 
 struct ComboNumber {
   int X, Y, Number, Flags, Timer;
+  int Speed;
   struct ComboNumber *Next;
 };
 
@@ -186,6 +191,8 @@ struct Playfield {
   int KeyNew[KEY_COUNT];
   int KeyRepeat[KEY_COUNT];
   int *Playfield;
+  int ChainCounter;
+  int ChainResetTimer;
   uint32_t Score;
 
   // Frenzy
@@ -195,6 +202,7 @@ struct Playfield {
   struct MatchRow *Match;
   struct FallingChunk *FallingData;
   struct ComboNumber *ComboNumbers;
+  struct GarbageSlab *GarbageSlabs;
 
   // Falling blocks
   int FallTimer;
@@ -258,6 +266,7 @@ void UpdateDiceMatch(struct Playfield *P);
 void UpdateStacker(struct Playfield *P);
 int Random(int Choices);
 
+void TriggerGarbageClear(struct Playfield *P, int x, int y, int *IsGarbage);
 int CountConnected(struct Playfield *P, int X, int Y, int *Used);
 void ClearConnected(struct Playfield *P, int X, int Y);
 int MakeBlocksFall(struct Playfield *P);

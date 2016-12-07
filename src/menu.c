@@ -153,7 +153,7 @@ void JoypadConfig(int Id, SDL_Joystick *joy) {
     SDL_Delay(17);
   }
 
-  if(!quit) {
+  if(CurrentKey >= KEY_COUNT) {
     KeymapPathForJoystick(joy);
     FILE *File = fopen(TempString, "wb");
     if(!File)
