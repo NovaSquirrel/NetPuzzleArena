@@ -21,22 +21,28 @@
 int PlayfieldWidth = 6;
 int PlayfieldHeight = 13;
 
+// Gets only the color of a tile and nothing else
 inline int GetColor(struct Playfield *P, int X, int Y) {
   return P->Playfield[P->Width * Y + X]&PF_COLOR;
 }
 
+// Gets a tile from the playfield, with all information included
 inline int GetTile(struct Playfield *P, int X, int Y) {
   return P->Playfield[P->Width * Y + X];
 }
 
+// Set a tile on the playfield
 inline void SetTile(struct Playfield *P, int X, int Y, int Value) {
   P->Playfield[P->Width * Y + X] = Value;
 }
 
+// Generate a random color
 int RandomTileColor(struct Playfield *P) {
-  return Random(P->ColorCount)+1;
+  return Random(P->ColorCount)+1; // +1 because the empty tile is 0
 }
 
+// Count the number of same-colored blocks that are touching each other in a group, from a starting point
+// "Used" is an int array that should be the size of P->Width*P->Height, and should be zero'd before the first CountConnected call
 int CountConnected(struct Playfield *P, int X, int Y, int *Used) {
   int Color = GetTile(P, X, Y);
   int Sum = 1;
@@ -54,6 +60,7 @@ int CountConnected(struct Playfield *P, int X, int Y, int *Used) {
   return Sum;
 }
 
+// Clear all of the same-colored blocks that are touching each other in a group, from a starting point
 void ClearConnected(struct Playfield *P, int X, int Y) {
   int Color = GetTile(P, X, Y);
   SetTile(P, X, Y, BLOCK_EMPTY);
@@ -68,6 +75,7 @@ void ClearConnected(struct Playfield *P, int X, int Y) {
     ClearConnected(P, X, Y+1);
 }
 
+// Look for any blocks that are above an empty tile and move them down
 int MakeBlocksFall(struct Playfield *P) {
   int BlocksFell = 0;
   for(int x=0; x<P->Width; x++)
@@ -80,6 +88,7 @@ int MakeBlocksFall(struct Playfield *P) {
   return BlocksFell;
 }
 
+// Are there any tiles that can fall?
 int TestBlocksFall(struct Playfield *P) {
   for(int x=0; x<P->Width; x++)
     for(int y=P->Height-2; y; y--)
@@ -89,6 +98,7 @@ int TestBlocksFall(struct Playfield *P) {
   return 0;
 }
 
+// Checks if a given tile contains garbage, and if so, start clearing it
 void TriggerGarbageClear(struct Playfield *P, int x, int y, int *IsGarbage) {
   if(x < 0 || y < 0)
     return;
@@ -113,13 +123,18 @@ void TriggerGarbageClear(struct Playfield *P, int x, int y, int *IsGarbage) {
   }
 }
 
+// Clears groups of blocks of the same color, but only if the groups are big enough.
+// Also has those blocks fall.
+// Returns 1 if blocks are currently falling, or 0 if it's time for the player to drop another piece.
 int ClearAvalancheStyle(struct Playfield *P) {
   if(MakeBlocksFall(P))
     return 1;
 
-  // look for groups and clear them
+  // make an array for CountConnected to use
   int Used[P->Width * P->Height];
-  memset(Used, 0, sizeof(Used));    
+  memset(Used, 0, sizeof(Used));
+
+  // look for groups and clear them
   for(int y=0; y<P->Height; y++)
     for(int x=0; x<P->Width; x++) {
       if(!GetTile(P, x, y))
@@ -135,6 +150,7 @@ int ClearAvalancheStyle(struct Playfield *P) {
   return 0;
 }
 
+// Sets the defaults for each type of game.
 void SetGameDefaults(struct Playfield *P, int Game) {
   P->GameType = Game;
   switch(Game) {
@@ -157,6 +173,7 @@ void SetGameDefaults(struct Playfield *P, int Game) {
   }
 }
 
+// Allocates space for a playfield
 void InitPlayfield(struct Playfield *P) {
   P->Width = 6;
   P->Height = 13;
@@ -169,6 +186,7 @@ void InitPlayfield(struct Playfield *P) {
   }
 }
 
+// Randomizes a given playfield row, and attempts to avoid making lines of more than 3 of the same color in a row
 void RandomizeRow(struct Playfield *P, int y) {
   // do not naturally create matches
   int Tries = 50;
@@ -202,7 +220,9 @@ void UpdateStacker(struct Playfield *P) {
 
 }
 
+// Does updates that are relevant to all puzzle games, and runs the specific one for each game.
 void UpdatePlayfield(struct Playfield *P) {
+  // Display numbers for combos and chains that display for a bit and then disappear
   for(struct ComboNumber *Num = P->ComboNumbers; Num;) {
     struct ComboNumber *Next = Num->Next;
 
@@ -219,6 +239,13 @@ void UpdatePlayfield(struct Playfield *P) {
       }
       free(Num);
     }
+
+    // Make combo numbers move up and then stop
+    if(Num->Timer < 10)
+      Num->Speed = 0;
+    Num->Y-=Num->Speed>>2;
+    Num->Speed++;
+
     Num = Next;
   }
 

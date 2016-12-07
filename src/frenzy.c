@@ -73,6 +73,7 @@ int PointsForChainPart(int Size) {
   return 6980 + ((Size+1 - 12) * 1800);
 }
 
+// Run the playfield for one tick
 void UpdatePuzzleFrenzy(struct Playfield *P) {
   int IsFalling[P->Width][P->Height];
   int IsGarbage[P->Width * P->Height];
@@ -116,9 +117,8 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
     }
   }
 
+  // If the player isn't currently swapping, allow them to move
   if(!P->SwapTimer) {
-//    int OldX = P->CursorX; //, OldY = P->CursorY;
-
     if(P->KeyNew[KEY_LEFT])
       P->CursorX -= (P->CursorX != 0);
     if(P->KeyNew[KEY_DOWN])
@@ -133,7 +133,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 //    if((OldX != P->CursorX || OldY != P->CursorY) && !UsedAutorepeat)
 //      Mix_PlayChannel(-1, SampleMove, 0);
 
-    // Attempt a swap
+    // Attempt a swap if either rotate key is pressed
     if(P->KeyNew[KEY_ROTATE_L] || P->KeyNew[KEY_ROTATE_R]) {
       int Tile1 = GetTile(P, P->CursorX, P->CursorY);
       int Tile2 = GetTile(P, P->CursorX+1, P->CursorY);
@@ -143,22 +143,22 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
         && !IsFalling[P->CursorX][P->CursorY] && !IsFalling[P->CursorX+1][P->CursorY]
 //        && !IsFalling[P->CursorX][P->CursorY-1] && !IsFalling[P->CursorX+1][P->CursorY-1]
         ) {
-        P->SwapColor1 = Tile1 & PF_COLOR; // strip out chain information for now
-        P->SwapColor2 = Tile2 & PF_COLOR;
+        P->SwapColor1 = Tile1; // yes, keep the chain count in the tiles!
+        P->SwapColor2 = Tile2; // see https://youtu.be/m1sNm62gCR0?t=1m48s
+
         if(!(P->Flags & SWAP_INSTANTLY)) {
+          // regular swap, takes 4 frames
           SetTile(P, P->CursorX, P->CursorY, BLOCK_DISABLED);
           SetTile(P, P->CursorX+1, P->CursorY, BLOCK_DISABLED);
           P->SwapTimer = 3;
-#ifdef ENABLE_AUDIO
-          Mix_PlayChannel(-1, SampleSwap, 0);
-#endif
         } else {
+          // instantly swap, no timer
           SetTile(P, P->CursorX, P->CursorY, Tile2);
           SetTile(P, P->CursorX+1, P->CursorY, Tile1);
-#ifdef ENABLE_AUDIO
-          Mix_PlayChannel(-1, SampleSwap, 0);
-#endif
         }
+#ifdef ENABLE_AUDIO
+        Mix_PlayChannel(-1, SampleSwap, 0);
+#endif
       }
     }
   }
@@ -191,6 +191,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
       int Horiz = 0, Vert = 0, Color = GetColor(P, x, y);
       if(!Color || Color==BLOCK_DISABLED || IsFalling[x][y])
         continue;
+      // Don't trigger any matches if there are any empty tiles below. Should this be kept?
       if(y < P->Height-2 && !GetTile(P, x, y+1))
         continue;
 
@@ -213,7 +214,8 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
             MaxChain = Chain;
         }
       }
-      // look at chain size first
+ 
+     // look at chain size first
       for(int i=0; i<=Horiz; i++) {
         int Chain = GetTile(P, x+i, y)&PF_CHAIN;
         if(Chain > MaxChain)
@@ -225,6 +227,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
           P->ChainCounter++;
           // was originally using MaxChain>>8 here but that's not accurate to the original game
           // which I think can only handle one chain at a time
+          // see https://www.youtube.com/watch?v=2GwvWqrhp4o
           IsChainActive = 1;
 //          SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Chain (maxchain) %i", MaxChain>>8);
           SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Chain %i", P->ChainCounter);
@@ -250,7 +253,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
   if(!IsChainActive && P->ChainCounter && !P->ChainResetTimer)
     P->ChainResetTimer = 2;
 
-  // create match structs for the matches that are found
+  // create match structs for the matches that are found, and do related tasks
   int ComboSize = 0, ComboChainSize = 0;
   // look for chains first
   for(int y=0; y<P->Height-1; y++)
@@ -259,20 +262,23 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
       if(Chain > ComboChainSize)
         ComboChainSize = Chain;
     }
-
-  int MatchULX = -1, MatchULY = -1; // match upper left corner
+  // now actually go make those structs
+  int MatchULX = -1, MatchULY = -1;
   for(int y=0; y<P->Height-1; y++)
     for(int x=0; x<P->Width; x++) {
       if(Used[x][y] || UsedV[x][y]) {
+        // Tetris Attack displays the combo number next to the upper left most tile in the match
         if(MatchULX < 0) {
           MatchULX = x;
           MatchULY = y;
         }
+        // trigger garbage clears next to every cleared tile
         TriggerGarbageClear(P, x-1, y, IsGarbage);
         TriggerGarbageClear(P, x+1, y, IsGarbage);
         TriggerGarbageClear(P, x, y-1, IsGarbage);
         TriggerGarbageClear(P, x, y+1, IsGarbage);
 
+        // allocate match struct, fill everything in
         struct MatchRow *Match = (struct MatchRow*)calloc(1, sizeof(struct MatchRow));
         int Width = Used[x][y];
         if(!Width)
@@ -293,8 +299,11 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
         else
           Match->Timer2 = 10;
 
+        // replace the clearing tiles with the disabled tile type
         for(int i=0; i<Width; i++)
           SetTile(P, x+i, y, BLOCK_DISABLED);
+
+        // add this match struct to the list
         if(!FirstMatch)
           FirstMatch = Match;
         if(CurMatch)
@@ -304,29 +313,33 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
         x+=Width-1;
       }
     }
+
+  // give points if a combo was made
   if(ComboSize) {
     P->Score += BasePointsForCombo(ComboSize);
     // chain bonus
     if(MaxActiveChain)
       P->Score += PointsForChainPart(MaxActiveChain-1);
-  }
-  if(ComboSize >= 4 || (ComboSize == 3 && ComboChainSize)) {
-    Mix_PlayChannel(-1, SampleCombo, 0);
 
-    struct ComboNumber *Num = (struct ComboNumber*)malloc(sizeof(struct ComboNumber));
-    Num->X = MatchULX*TILE_W + TILE_W/2;
-    Num->Y = MatchULY*TILE_H + TILE_H/2;
-    if(P->ChainCounter) {
-      Num->Number = P->ChainCounter+1; //(ComboChainSize>>8)+1;
-      Num->Flags = TEXT_CHAIN|TEXT_CENTERED;
-    } else {
-      Num->Number = ComboSize;
-      Num->Flags = TEXT_CENTERED;
+    // play sound effects and make visual effects
+    if(ComboSize >= 4 || (ComboSize == 3 && ComboChainSize)) {
+      Mix_PlayChannel(-1, SampleCombo, 0);
+
+      struct ComboNumber *Num = (struct ComboNumber*)malloc(sizeof(struct ComboNumber));
+      Num->X = MatchULX*TILE_W + TILE_W/2;
+      Num->Y = MatchULY*TILE_H + TILE_H/2;
+      if(P->ChainCounter) {
+        Num->Number = P->ChainCounter+1; //(ComboChainSize>>8)+1;
+        Num->Flags = TEXT_CHAIN|TEXT_CENTERED;
+      } else {
+        Num->Number = ComboSize;
+        Num->Flags = TEXT_CENTERED;
+      }
+      Num->Timer = 30;
+      Num->Next = P->ComboNumbers;
+      Num->Speed = 0;
+      P->ComboNumbers = Num;
     }
-    Num->Timer = 30;
-    Num->Next = P->ComboNumbers;
-    Num->Speed = 0;
-    P->ComboNumbers = Num;
   }
 
   // Add the list of matches to the playfield struct
@@ -357,9 +370,11 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
     while(!Last->DisplayWidth)
       Last = Last->Child;
 
+    // Wait a delay before actually erasing a block
     Last->Timer2--;
     if(!Last->Timer2) {
-      Last->Timer2 = 10;
+      Last->Timer2 = 10; // Reset the timer
+
       Last->DisplayX++;
       Last->DisplayWidth--;
       P->Score += 10;
@@ -418,7 +433,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 
 /////////////////// GRAVITY ///////////////////
 
-  // gravity
+  // Look for tiles that need to start falling, and make a FallingChunk so they start falling
   for(int x=0; x< P->Width; x++) {
     for(int y=0; y<P->Height-1; y++) {
       int Color = GetColor(P, x, y);
@@ -437,6 +452,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
       if(Bottom == P->Height-1)
         break;
       if(GetColor(P, x, Bottom) != BLOCK_DISABLED) {
+        // create the struct
         struct FallingChunk *Fall = (struct FallingChunk*)malloc(sizeof(struct FallingChunk));
         Fall->X = x;
         Fall->Y = y;
@@ -543,14 +559,6 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 
 
 /////////////////// RISING ///////////////////
-
-  // Make combo numbers rise up a bit and stop
-  for(struct ComboNumber *Num = P->ComboNumbers; Num; Num=Num->Next) {
-    if(Num->Timer < 10)
-      Num->Speed = 0;
-    Num->Y-=Num->Speed>>2;
-    Num->Speed++;
-  }
 
   // Handle rising
   if(!P->LiftKeyOn && !P->RiseStopTimer && (!P->Match || P->Flags&LIFT_WHILE_CLEARING) && P->KeyDown[KEY_LIFT]) {
