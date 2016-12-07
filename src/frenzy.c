@@ -117,7 +117,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
   }
 
   if(!P->SwapTimer) {
-    int OldX = P->CursorX; //, OldY = P->CursorY;
+//    int OldX = P->CursorX; //, OldY = P->CursorY;
 
     if(P->KeyNew[KEY_LEFT])
       P->CursorX -= (P->CursorX != 0);
@@ -273,7 +273,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
         TriggerGarbageClear(P, x, y-1, IsGarbage);
         TriggerGarbageClear(P, x, y+1, IsGarbage);
 
-        struct MatchRow *Match = (struct MatchRow*)malloc(sizeof(struct MatchRow));
+        struct MatchRow *Match = (struct MatchRow*)calloc(1, sizeof(struct MatchRow));
         int Width = Used[x][y];
         if(!Width)
           Width = 1;
@@ -329,8 +329,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
     P->ComboNumbers = Num;
   }
 
-//    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Combo of size %i", ComboSize);
-
+  // Add the list of matches to the playfield struct
   if(FirstMatch) {
     if(!P->Match)
       P->Match = FirstMatch;
@@ -342,14 +341,18 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
   }
   
   // Do animation for clearing blocks
-  for(struct MatchRow *Match = P->Match; Match; Match=Match->Next) {
+  for(struct MatchRow *Match = P->Match; Match;) {
+    struct MatchRow *NextMatch = Match->Next;
+
     // Stay white for a moment
     if(Match->Timer1) {
       Match->Timer1--;
+      Match = NextMatch;
       continue;
     }
 
-    // Start erasing blocks
+    // Start erasing blocks.
+    // Find a match that still has blocks to erase
     struct MatchRow *Last = Match;
     while(!Last->DisplayWidth)
       Last = Last->Child;
@@ -369,7 +372,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 
         // adjust pointers
         if(P->Match == Match) {
-          P->Match = Match->Next;
+          P->Match = P->Match->Next;
         } else {
           struct MatchRow *Find = P->Match;
           while(Find->Next != Match)
@@ -378,22 +381,23 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
         }
 
         // free, and also erase all those blocks
-        for(Last = Match; Last;) {
+        for(struct MatchRow *Free = Match; Free;) {
           // mark chain counters
-         for(int x=Last->X; x<(Last->X+Last->Width); x++) {
-            for(int y=Last->Y; GetColor(P, x, y) && y && !IsGarbage[y*P->Width + x]; y--) {
+          for(int x=Free->X; x<(Free->X+Free->Width); x++) {
+            for(int y=Free->Y; GetColor(P, x, y) && y && !IsGarbage[y*P->Width + x]; y--) {
               int Chain = GetTile(P, x, y) & PF_CHAIN;
-              if(Chain < Last->Chain+PF_CHAIN_ONE)
-                SetTile(P, x, y, GetColor(P, x, y) | (Last->Chain+PF_CHAIN_ONE));
+              if(Chain < Free->Chain+PF_CHAIN_ONE)
+                SetTile(P, x, y, GetColor(P, x, y) | (Free->Chain+PF_CHAIN_ONE));
             }
           }
 
-          struct MatchRow *Next = Last->Child;
-          free(Last);
-          Last = Next;
+          struct MatchRow *Next = Free->Child;
+          free(Free);
+          Free = Next;
         }
       }
     }
+    Match = NextMatch;
   }
 
   // Change disabled blocks back to regular ones
