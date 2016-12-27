@@ -31,6 +31,7 @@ SDL_Surface *IconSurface = NULL;
 SDL_Surface *WindowIcon = NULL;
 int quit = 0;
 int retraces = 0;
+int KeyboardOnly = 0;
 struct Playfield Player1;
 char TempString[1024];
 
@@ -106,6 +107,8 @@ int main(int argc, char *argv[]) {
       ScaleFactor = strtol(argv[i+1], NULL, 10);
     if(!strcmp(argv[i], "-noaccel"))
       NoAcceleration = 1;
+    if(!strcmp(argv[i], "-keyboard"))
+      KeyboardOnly = 1;
   }
 
   TILE_W *= ScaleFactor;
@@ -117,7 +120,7 @@ int main(int argc, char *argv[]) {
     printf("SDL could not initialize video! SDL_Error: %s\n", SDL_GetError());
     return -1;
   }
-  if(SDL_Init(SDL_INIT_JOYSTICK) < 0){
+  if(!KeyboardOnly && SDL_Init(SDL_INIT_JOYSTICK) < 0){
     printf("SDL could not initialize joystick interface! SDL_Error: %s\n", SDL_GetError());
   }
 

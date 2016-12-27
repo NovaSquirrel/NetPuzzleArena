@@ -222,6 +222,13 @@ void UpdateKeysFromMap(struct JoypadMapping *Map, int *Out) {
     int ReadValue;
 
     switch(Type) {
+      case 'a':
+        ReadValue =  SDL_JoystickGetAxis(Map->Joy, Which);
+        if(Value > 0)
+          Out[i] = ReadValue > (32767/2);
+        else
+          Out[i] = ReadValue < -(32767/2);
+        break;
       case 'h':
         ReadValue =  SDL_JoystickGetHat(Map->Joy, Which);
         Out[i] = ReadValue & Value;

@@ -43,7 +43,7 @@ char *JoypadKeyString(struct JoypadKey *Key, char *Output) {
       sprintf(Output, "Keyboard (%s)", SDL_GetScancodeName(Key->Which));
       break;
     case 'a':
-      if(Key->Value > 1)
+      if(Key->Value > 0)
         sprintf(Output, "Axis %i +", Key->Which);
       else
         sprintf(Output, "Axis %i -", Key->Which);
@@ -82,6 +82,7 @@ void JoypadConfig(int Id, SDL_Joystick *joy) {
   SDL_QueryTexture(GameController, NULL, NULL, &ControllerWidth, &ControllerHeight);
 
   int CurrentKey = 0;
+  int AxeHoldCount = 0;
 
   struct JoypadKey LastKey = {0, 0, 0};
 
@@ -102,8 +103,13 @@ void JoypadConfig(int Id, SDL_Joystick *joy) {
         TheKey.Value = 0;
       }
       else if(e.type == SDL_JOYAXISMOTION && e.jaxis.which == Id) {
-        // LogMessage("axe %i %i", e.jaxis.axis, e.jaxis.value);
-        // no axis support for now
+        if(abs(e.jaxis.value) > (32767/2)) {
+          TheKey.Type = 'a';
+          TheKey.Which = e.jaxis.axis;
+          TheKey.Value = (e.jaxis.value > 0) ? 1 : -1;
+          if(TheKey.Type != LastKey.Type || TheKey.Which != LastKey.Which || TheKey.Value != LastKey.Value)
+            AxeHoldCount = 0;
+        }
       }
       else if(e.type == SDL_JOYHATMOTION && e.jhat.which == Id) {
         if(e.jhat.value == SDL_HAT_UP || e.jhat.value == SDL_HAT_LEFT || e.jhat.value == SDL_HAT_DOWN || e.jhat.value == SDL_HAT_RIGHT) {
@@ -115,13 +121,28 @@ void JoypadConfig(int Id, SDL_Joystick *joy) {
       else if(e.type == SDL_JOYDEVICEREMOVED && e.jdevice.which == Id)
         goto Exit;
     }
+    // Keep axis key pressed even if it's not continually moving
+    if(!TheKey.Type && LastKey.Type == 'a') {
+      int Value = SDL_JoystickGetAxis(joy, LastKey.Which);
+      if((LastKey.Value > 0 && Value >  (32767/2))
+       ||(LastKey.Value < 0 && Value < -(32767/2)))
+        TheKey = LastKey;
+      else
+        memset(&LastKey, 0, sizeof(LastKey));
+    }
+
     if(TheKey.Type) {
       if(LastKey.Type && LastKey.Which == TheKey.Which && LastKey.Value == TheKey.Value) {
-        KeyList[CurrentKey] = TheKey;
-        CurrentKey++;
-        if(CurrentKey >= KEY_COUNT)
-          break;
-        LastKey.Type = 0;
+        if(TheKey.Type == 'a')
+          AxeHoldCount++;
+        if(TheKey.Type != 'a' || AxeHoldCount > 60) {
+          KeyList[CurrentKey] = TheKey;
+          CurrentKey++;
+          if(CurrentKey >= KEY_COUNT)
+            break;
+          LastKey.Type = 0;
+          AxeHoldCount = 0;
+        }
       } else {
         LastKey = TheKey;
       }
@@ -138,7 +159,10 @@ void JoypadConfig(int Id, SDL_Joystick *joy) {
     DrawTextTTF(ChatFont, ScreenWidth/2, ScreenHeight/2-8*3*ScaleFactor, TEXT_WHITE|TEXT_CENTERED, "Press \"%s\"", KeyAssignmentNames[CurrentKey]);
     if(LastKey.Type) {
       DrawTextTTF(ChatFont, ScreenWidth/2, ScreenHeight/2-8*2*ScaleFactor, TEXT_WHITE|TEXT_CENTERED, "%s", JoypadKeyString(&LastKey, TempString));
-      DrawTextTTF(ChatFont, ScreenWidth/2, ScreenHeight/2-8*1*ScaleFactor, TEXT_WHITE|TEXT_CENTERED, "Press again to confirm");
+      if(LastKey.Type == 'a')
+        DrawTextTTF(ChatFont, ScreenWidth/2, ScreenHeight/2-8*1*ScaleFactor, TEXT_WHITE|TEXT_CENTERED, "Hold to confirm (%i)", AxeHoldCount);
+      else
+        DrawTextTTF(ChatFont, ScreenWidth/2, ScreenHeight/2-8*1*ScaleFactor, TEXT_WHITE|TEXT_CENTERED, "Press again to confirm");
     }
 
     int ControllerX = ScreenWidth/2-ControllerWidth/2;
@@ -192,11 +216,15 @@ struct JoypadMapping ReadControllerConfig(FILE *File) {
   return Out;
 }
 
+extern int KeyboardOnly;
+
 void DiscoverJoysticks() {
-  // Close all open joysticks
-  for(int i=0; i<ACTIVE_JOY_MAX; i++)
-    if(ActiveJoysticks[i].Joy && SDL_JoystickGetAttached(ActiveJoysticks[i].Joy))
-      SDL_JoystickClose(ActiveJoysticks[i].Joy);
+  if(!KeyboardOnly) {
+    // Close all open joysticks
+    for(int i=0; i<ACTIVE_JOY_MAX; i++)
+      if(ActiveJoysticks[i].Joy && SDL_JoystickGetAttached(ActiveJoysticks[i].Joy))
+        SDL_JoystickClose(ActiveJoysticks[i].Joy);
+  }
   memset(ActiveJoysticks, 0, sizeof(ActiveJoysticks));
 
   KeymapPathForJoystick(NULL);
@@ -212,6 +240,9 @@ void DiscoverJoysticks() {
   }
 
   int JoystickNum = 1;
+
+  if(KeyboardOnly)
+    return;
 
   // look through the list of plugged-in controllers
   for(int i=0; i<SDL_NumJoysticks(); i++) {
