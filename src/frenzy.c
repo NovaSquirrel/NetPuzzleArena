@@ -19,6 +19,8 @@
 #include "puzzle.h"
 
 #define HOVER_TIME 12
+extern int FrameAdvance;
+extern int FrameAdvanceMode;
 
 // Takes a combo size (in number of tiles) and figures out how much garbage it amounts to
 int GarbageForCombo(struct Playfield *P, int ComboSize, int *List, int ListSize) {
@@ -109,11 +111,13 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
     }
 
   // Cursor movement
-  if(P->SwapTimer) {
-    P->SwapTimer--;
-    if(!P->SwapTimer) {
-      SetTile(P, P->CursorX, P->CursorY, P->SwapColor2);
-      SetTile(P, P->CursorX+1, P->CursorY, P->SwapColor1);
+  if(!FrameAdvanceMode || !P->Paused || FrameAdvance) {
+    if(P->SwapTimer) {
+      P->SwapTimer--;
+      if(!P->SwapTimer) {
+        SetTile(P, P->CursorX, P->CursorY, P->SwapColor2);
+        SetTile(P, P->CursorX+1, P->CursorY, P->SwapColor1);
+      }
     }
   }
 
@@ -165,7 +169,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 
   if(P->KeyNew[KEY_PAUSE])
     P->Paused ^= 1;
-  if(P->Paused) {
+  if(!FrameAdvance && P->Paused) {
     // allow editing the playfield for debugging stuff
     if(P->KeyNew[KEY_OK])
       SetTile(P, P->CursorX, P->CursorY, (GetTile(P, P->CursorX, P->CursorY)+1)%BLOCK_BLUE);

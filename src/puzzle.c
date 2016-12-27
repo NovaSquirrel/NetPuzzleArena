@@ -34,7 +34,8 @@ int retraces = 0;
 int KeyboardOnly = 0;
 struct Playfield Player1;
 char TempString[1024];
-
+int FrameAdvanceMode = 0;
+int FrameAdvance = 0;
 struct JoypadMapping ActiveJoysticks[ACTIVE_JOY_MAX];
 
 // config flags
@@ -66,12 +67,24 @@ void GameplayStart() {
   Player1.GarbageSlabs = Slab;
 */
 
+  int FrameAdvanceContinuous = 0;
   while(!quit) {
+    FrameAdvance = 0;
     SDL_Event e;
     while(SDL_PollEvent(&e) != 0) {
       if(e.type == SDL_QUIT)
         quit = 1;
+      else if(e.type == SDL_KEYDOWN) {
+        if(e.key.keysym.scancode == SDL_SCANCODE_GRAVE)
+          FrameAdvance = 1;
+        if(e.key.keysym.scancode == SDL_SCANCODE_1)
+          FrameAdvanceContinuous = 1;
+      } else if(e.type == SDL_KEYUP) {
+        if(e.key.keysym.scancode == SDL_SCANCODE_1)
+          FrameAdvanceContinuous = 0;
+      }
     }
+    FrameAdvance |= FrameAdvanceContinuous;
 
     CombinedUpdateKeys(&Player1);
     UpdatePlayfield(&Player1);
@@ -109,6 +122,8 @@ int main(int argc, char *argv[]) {
       NoAcceleration = 1;
     if(!strcmp(argv[i], "-keyboard"))
       KeyboardOnly = 1;
+    if(!strcmp(argv[i], "-frameadvance"))
+      FrameAdvanceMode = 1;
   }
 
   TILE_W *= ScaleFactor;
