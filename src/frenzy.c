@@ -86,7 +86,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
   memset(IsFalling, 0, sizeof(IsFalling));
   for(struct FallingChunk *Fall = P->FallingData; Fall; Fall = Fall->Next)
     for(int h=0; h<Fall->Height; h++)
-      IsFalling[Fall->X][Fall->Y+h] = 1+!Fall->Timer;
+      IsFalling[Fall->X][Fall->Y+h] = 1+!Fall->Timer; // 1 is hovering, 2 is falling
 
   // Mark the garbage tiles for easy checking
   memset(IsGarbage, 0, sizeof(IsGarbage));
@@ -149,7 +149,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
       // to do: you CAN catch a tile as it's falling.
       // this should probably split the falling column into two parts
       && !IsFalling[P->CursorX][P->CursorY] && !IsFalling[P->CursorX+1][P->CursorY]
-//        && !IsFalling[P->CursorX][P->CursorY-1] && !IsFalling[P->CursorX+1][P->CursorY-1]
+        && IsFalling[P->CursorX][P->CursorY-1]!=1 && IsFalling[P->CursorX+1][P->CursorY-1]!=1
       ) {
       P->SwapColor1 = Tile1; // yes, keep the chain count in the tiles!
       P->SwapColor2 = Tile2; // see https://youtu.be/m1sNm62gCR0?t=1m48s
@@ -176,8 +176,10 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
     P->Paused ^= 1;
   if(!FrameAdvance && P->Paused) {
     // allow editing the playfield for debugging stuff
-    if(P->KeyNew[KEY_OK])
+    if(P->KeyNew[KEY_OK] | P->KeyNew[KEY_ITEM])
       SetTile(P, P->CursorX, P->CursorY, (GetTile(P, P->CursorX, P->CursorY)+1)%BLOCK_BLUE);
+    if(P->KeyNew[KEY_ACTION])
+      SetTile(P, P->CursorX+1, P->CursorY, (GetTile(P, P->CursorX+1, P->CursorY)+1)%BLOCK_BLUE);
     if(P->KeyNew[KEY_BACK]) {
       SetTile(P, P->CursorX, P->CursorY, BLOCK_EMPTY);
       SetTile(P, P->CursorX+1, P->CursorY, BLOCK_EMPTY);
