@@ -115,55 +115,60 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
     if(P->SwapTimer) {
       P->SwapTimer--;
       if(!P->SwapTimer) {
-        SetTile(P, P->CursorX, P->CursorY, P->SwapColor2);
-        SetTile(P, P->CursorX+1, P->CursorY, P->SwapColor1);
+        SetTile(P, P->SwapX, P->SwapY, P->SwapColor2);
+        SetTile(P, P->SwapX+1, P->SwapY, P->SwapColor1);
       }
     }
   }
 
   // If the player isn't currently swapping, allow them to move
-  if(!P->SwapTimer) {
-    if(P->KeyNew[KEY_LEFT])
-      P->CursorX -= (P->CursorX != 0);
-    if(P->KeyNew[KEY_DOWN])
-      P->CursorY += (P->CursorY != P->Height-2);
-    if(P->KeyNew[KEY_UP])
-      P->CursorY -= (P->CursorY != 1);
-    if(P->KeyNew[KEY_RIGHT])
-      P->CursorX += (P->CursorX != P->Width-2);
+  if(P->KeyNew[KEY_LEFT])
+    P->CursorX -= (P->CursorX != 0);
+  if(P->KeyNew[KEY_DOWN])
+    P->CursorY += (P->CursorY != P->Height-2);
+  if(P->KeyNew[KEY_UP])
+    P->CursorY -= (P->CursorY != 1);
+  if(P->KeyNew[KEY_RIGHT])
+    P->CursorX += (P->CursorX != P->Width-2);
 
 //    if(P->Flags & PULL_BLOCK_HORIZONTAL && OldX != P->CursorX && P->KeyDown[KEY_SWAP])
 //      P->KeyNew[KEY_SWAP] = 1;
 //    if((OldX != P->CursorX || OldY != P->CursorY) && !UsedAutorepeat)
 //      Mix_PlayChannel(-1, SampleMove, 0);
 
-    // Attempt a swap if either rotate key is pressed
-    if(P->KeyNew[KEY_ROTATE_L] || P->KeyNew[KEY_ROTATE_R]) {
-      int Tile1 = GetTile(P, P->CursorX, P->CursorY);
-      int Tile2 = GetTile(P, P->CursorX+1, P->CursorY);
-      if(Tile1 != BLOCK_DISABLED && Tile2 != BLOCK_DISABLED
-        // to do: you CAN catch a tile as it's falling.
-        // this should probably split the falling column into two parts
-        && !IsFalling[P->CursorX][P->CursorY] && !IsFalling[P->CursorX+1][P->CursorY]
+  // Attempt a swap if either rotate key is pressed
+  if(P->KeyNew[KEY_ROTATE_L] || P->KeyNew[KEY_ROTATE_R]) {
+    // if there was a swap going on, force it to complete
+    if(P->SwapTimer) {
+      SetTile(P, P->SwapX, P->SwapY, P->SwapColor2);
+      SetTile(P, P->SwapX+1, P->SwapY, P->SwapColor1);
+    }
+    int Tile1 = GetTile(P, P->CursorX, P->CursorY);
+    int Tile2 = GetTile(P, P->CursorX+1, P->CursorY);
+    if(Tile1 != BLOCK_DISABLED && Tile2 != BLOCK_DISABLED
+      // to do: you CAN catch a tile as it's falling.
+      // this should probably split the falling column into two parts
+      && !IsFalling[P->CursorX][P->CursorY] && !IsFalling[P->CursorX+1][P->CursorY]
 //        && !IsFalling[P->CursorX][P->CursorY-1] && !IsFalling[P->CursorX+1][P->CursorY-1]
-        ) {
-        P->SwapColor1 = Tile1; // yes, keep the chain count in the tiles!
-        P->SwapColor2 = Tile2; // see https://youtu.be/m1sNm62gCR0?t=1m48s
+      ) {
+      P->SwapColor1 = Tile1; // yes, keep the chain count in the tiles!
+      P->SwapColor2 = Tile2; // see https://youtu.be/m1sNm62gCR0?t=1m48s
 
-        if(!(P->Flags & SWAP_INSTANTLY)) {
-          // regular swap, takes 4 frames
-          SetTile(P, P->CursorX, P->CursorY, BLOCK_DISABLED);
-          SetTile(P, P->CursorX+1, P->CursorY, BLOCK_DISABLED);
-          P->SwapTimer = 3;
-        } else {
-          // instantly swap, no timer
-          SetTile(P, P->CursorX, P->CursorY, Tile2);
-          SetTile(P, P->CursorX+1, P->CursorY, Tile1);
-        }
-#ifdef ENABLE_AUDIO
-        Mix_PlayChannel(-1, SampleSwap, 0);
-#endif
+      if(!(P->Flags & SWAP_INSTANTLY)) {
+        // regular swap, takes 4 frames
+        SetTile(P, P->CursorX, P->CursorY, BLOCK_DISABLED);
+        SetTile(P, P->CursorX+1, P->CursorY, BLOCK_DISABLED);
+        P->SwapTimer = 3;
+        P->SwapX = P->CursorX;
+        P->SwapY = P->CursorY;
+      } else {
+        // instantly swap, no timer
+        SetTile(P, P->CursorX, P->CursorY, Tile2);
+        SetTile(P, P->CursorX+1, P->CursorY, Tile1);
       }
+#ifdef ENABLE_AUDIO
+      Mix_PlayChannel(-1, SampleSwap, 0);
+#endif
     }
   }
 

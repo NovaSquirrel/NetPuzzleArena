@@ -110,8 +110,8 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
   // Draw swapping tiles
   if(P->SwapTimer) {
     int Offset = (4-P->SwapTimer)*4*ScaleFactor;
-    blit(TileSheet, ScreenRenderer, TILE_W*P->SwapColor1, 0, DrawX+P->CursorX*TILE_W+Offset, DrawY+P->CursorY*TILE_H-Rise, TILE_W, TILE_H);
-    blit(TileSheet, ScreenRenderer, TILE_W*P->SwapColor2, 0, DrawX+(P->CursorX+1)*TILE_W-Offset, DrawY+P->CursorY*TILE_H-Rise, TILE_W, TILE_H);
+    blit(TileSheet, ScreenRenderer, TILE_W*P->SwapColor1, 0, DrawX+P->SwapX*TILE_W+Offset, DrawY+P->SwapY*TILE_H-Rise, TILE_W, TILE_H);
+    blit(TileSheet, ScreenRenderer, TILE_W*P->SwapColor2, 0, DrawX+(P->SwapX+1)*TILE_W-Offset, DrawY+P->SwapY*TILE_H-Rise, TILE_W, TILE_H);
   }
 
   // Draw the cursor

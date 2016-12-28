@@ -202,6 +202,7 @@ struct Playfield {
   struct FallingChunk *FallingData;
   struct ComboNumber *ComboNumbers;
   struct GarbageSlab *GarbageSlabs;
+  int SwapX, SwapY;
 
   // Falling blocks
   int FallTimer;
