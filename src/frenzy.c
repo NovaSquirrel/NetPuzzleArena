@@ -597,6 +597,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
         SetTile(P, x, y, GetTile(P, x, y+1));
     P->CursorY--;
     P->Rise = 0;
+    P->SwapY--;
 
     // generate new blocks
     RandomizeRow(P, P->Height-1);
