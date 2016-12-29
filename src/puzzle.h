@@ -193,6 +193,7 @@ struct Playfield {
   int ChainCounter;
   int ChainResetTimer;
   uint32_t Score;
+  int MouseX, MouseY;
 
   // Frenzy
   int Rise;

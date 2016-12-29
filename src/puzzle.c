@@ -53,7 +53,7 @@ void ShowMainOptions();
 
 void GameplayStart() {
   memset(&Player1, 0, sizeof(struct Playfield));
-  Player1.Flags = LIFT_WHILE_CLEARING;
+  Player1.Flags = LIFT_WHILE_CLEARING | MOUSE_CONTROL;
   SetGameDefaults(&Player1, FRENZY);
   InitPlayfield(&Player1);
 
@@ -71,6 +71,8 @@ void GameplayStart() {
   while(!quit) {
     FrameAdvance = 0;
     SDL_Event e;
+    CombinedUpdateKeys(&Player1);
+
     while(SDL_PollEvent(&e) != 0) {
       if(e.type == SDL_QUIT)
         quit = 1;
@@ -82,11 +84,35 @@ void GameplayStart() {
       } else if(e.type == SDL_KEYUP) {
         if(e.key.keysym.scancode == SDL_SCANCODE_1)
           FrameAdvanceContinuous = 0;
+      } else if(e.type == SDL_MOUSEMOTION && (Player1.Flags & MOUSE_CONTROL)) {
+        int Buttons = SDL_GetMouseState(NULL, NULL);
+        // ignore if button isn't pressed
+        if(Buttons & SDL_BUTTON(SDL_BUTTON_LEFT)) {
+          int VisualWidth = Player1.Width * TILE_W;
+          int VisualHeight = (Player1.Height-1) * TILE_H;
+          int X = (ScreenWidth/2)-(Player1.Width*TILE_W)/2;
+          int Y = (ScreenHeight/2)-((Player1.Height-1)*TILE_H)/2;
+          int Rise = Player1.Rise * (TILE_H / 16);
+          // ignore if outside the playfield
+          if(e.motion.x > X && e.motion.x < X+VisualWidth && e.motion.y > Y && e.motion.y < Y+VisualHeight) {
+            int MouseX = (e.motion.x - X) / TILE_W;
+            int MouseY = (e.motion.y - Y + Rise) / TILE_H;
+            if(Player1.MouseX != MouseX && Player1.MouseY == MouseY) {
+              Player1.KeyNew[KEY_ROTATE_L] = 1;
+              Player1.CursorX = MouseX - (MouseX > Player1.MouseX);
+              Player1.CursorY = MouseY;
+            }
+            Player1.MouseX = MouseX;
+            Player1.MouseY = MouseY;
+          }
+        } else {
+          Player1.MouseX = -1;
+          Player1.MouseY = -1;
+        }
       }
     }
     FrameAdvance |= FrameAdvanceContinuous;
 
-    CombinedUpdateKeys(&Player1);
     UpdatePlayfield(&Player1);
 
     SDL_RenderCopy(ScreenRenderer, GameBG, NULL, NULL);
