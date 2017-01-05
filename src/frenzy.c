@@ -573,11 +573,13 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 
   // Handle rising
   if(!P->LiftKeyOn && !P->RiseStopTimer && (!P->Match || P->Flags&LIFT_WHILE_CLEARING) && P->KeyDown[KEY_LIFT]) {
-    P->Score++;
     if(P->Flags & INSTANT_LIFT) {
-      if(P->KeyNew[KEY_LIFT])
+      if(P->KeyNew[KEY_LIFT]) {
         P->Rise = 16;
+        P->Score++;
+      }
     } else {
+      P->Score++;
       P->LiftKeyOn = 1;
       P->RiseStopTimer = 10;
     }
