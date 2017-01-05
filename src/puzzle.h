@@ -25,6 +25,7 @@
 #define ENABLE_SOUNDS 1
 //#define ENABLE_MUSIC 1
 //#define DISPLAY_CHAIN_COUNT 1
+#define MAX_MODIFIERS 15
 
 #include <stdio.h>
 #include <string.h>
@@ -130,7 +131,8 @@ enum GameplayOptions {
   PULL_BLOCK_HORIZONTAL = 4,
   MOUSE_CONTROL = 8,
   NO_AUTO_REPEAT = 16,
-  INSTANT_LIFT = 32
+  INSTANT_LIFT = 32,
+  STYLUS_CONTROL = 64
 };
 
 struct FallingChunk {
@@ -216,6 +218,9 @@ struct Playfield {
   // Game rules
   int MinMatchSize; // how many matching tiles are needed
   int ColorCount;
+  int Difficulty; // easy, normal, difficult
+  int GameSpeed; // rising speed and falling speed
+  int Modifiers[MAX_MODIFIERS][2]; // 0 is type, 1 is value
 
   int Joystick;
 };
@@ -279,3 +284,35 @@ void UpdateKeysFromMap(struct JoypadMapping *Map, int *Out);
 void UpdateVolumes();
 void GetConfigPath();
 void RemoveLineEndings(char *buffer);
+
+struct GameModifier {
+  const char *Name;
+  const char *Description;
+  int Flags;
+  int Min;
+  int Max;
+  const char **Names;
+};
+
+enum ModifierFlags {
+  MOD_REQUIRED,
+  MOD_FRENZY
+};
+
+enum ModifierIDs {
+  MOD_NULL,
+  MOD_GAME_TYPE,
+  MOD_GAME_DIFFICULTY,
+  MOD_GAME_SPEED,
+  MOD_EXPLODING_LIFT,
+  MOD_COLOR_COUNT,
+  MOD_MINIMUM_MATCH,
+  MOD_INSTANT_SWAP,
+  MOD_INSTANT_LIFT,
+  MOD_TOUCH_CONTROL,
+  MOD_MOUSE_CONTROL,
+  MOD_PLAYFIELD_WIDTH,
+  MOD_PLAYFIELD_HEIGHT,
+};
+
+extern struct GameModifier ModifierList[];

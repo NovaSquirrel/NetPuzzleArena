@@ -157,31 +157,40 @@ void SetGameDefaults(struct Playfield *P, int Game) {
     case FRENZY:
       P->MinMatchSize = 3;
       P->ColorCount = 5;
+      P->Width = 6;
+      P->Height = 13;
       break;
     case AVALANCHE:
       P->MinMatchSize = 4;
       P->ColorCount = 5;
+      P->Width = 6;
+      P->Height = 13;
       break;
     case REVERSI_BALL:
       P->MinMatchSize = 10;
       P->ColorCount = 2;
+      P->Width = 20;
+      P->Height = 13;
       break;
     case PILLARS:
       P->MinMatchSize = 3;
       P->ColorCount = 6;
+      P->Width = 6;
+      P->Height = 13;
       break;
   }
 }
 
 // Allocates space for a playfield
 void InitPlayfield(struct Playfield *P) {
-  P->Width = 6;
-  P->Height = 13;
+  if(P->Playfield)
+    free(P->Playfield);
   P->Playfield = calloc(P->Width * P->Height, sizeof(int));
 
+  // make random rows if playing Puzzle Frenzy
   switch(P->GameType) {
     case FRENZY:
-      for(int j=8; j<13; j++)
+      for(int j=P->Height-5; j>0 && j<P->Height; j++)
         RandomizeRow(P, j);
   }
 }

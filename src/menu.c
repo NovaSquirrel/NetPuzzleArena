@@ -19,7 +19,32 @@
 #include "puzzle.h"
 
 SDL_Texture *GameLogo = NULL;
+void GameplayStart();
+void SetGameDefaults(struct Playfield *P, int Game);
+void InitPlayfield(struct Playfield *P);
 
+const char *DifficultyNames[] = {"Easy", "Normal", "Hard", NULL};
+const char *GameNames[] = {"Puzzle Frenzy", "Avalanche", "Pillars", "Dice game", "Reversi ball", "Cookie", "Stacker", NULL};
+const char *MatchTypeNames[] = {"4 directions", "8 directions", "Groups", NULL};
+
+struct GameModifier ModifierList[] = {
+ {"",                   "Press OK to choose a modifier",           0},
+ {"Game type",          "Choose a base game to add modifiers to",  MOD_REQUIRED, 0, 6, GameNames},
+ {"Difficulty",         "Game difficulty, affects various things", MOD_REQUIRED, 0, 2, DifficultyNames},
+ {"Speed",              "Speed of tile rising (or falling)",       MOD_REQUIRED, 0, 100},
+ {"Exploding lift",     "Can still lift while tiles are clearing"},
+ {"Color count",        "Number of different",                     0, 2, 8},
+ {"Minimum match size", "Amount of tiles needed for a match",      0, 2, 10},
+ {"Instant swap",       "Swaps take effect immediately"},
+ {"Instant lift",       "Lifts take effect immediately"},
+ {"Touch control",      "Drag your finger across tiles to swap"},
+ {"Mouse control",      "Click between two tiles to swap"},
+ {"Playfield width",    "Width of the playfield",                  0, 5, 20},
+ {"Playfield height",   "Height of the playfield",                 0, 5, 20},
+ {NULL}
+};
+
+// menu code
 int MenuKeysPressed(struct Playfield *P) {
   return P->KeyNew[KEY_UP] || P->KeyNew[KEY_DOWN] || P->KeyNew[KEY_LEFT] || P->KeyNew[KEY_RIGHT] || P->KeyNew[KEY_OK] || P->KeyNew[KEY_BACK];
 }
@@ -405,3 +430,218 @@ void ShowMainOptions() {
   Player1.Flags &= ~NO_AUTO_REPEAT;
 }
 
+void ApplyModifiers(struct Playfield *P) {
+  P->Flags = 0;
+
+  for(int i=0; i<MAX_MODIFIERS; i++) {
+    int Value = P->Modifiers[i][1];
+
+    switch(P->Modifiers[i][0]) {
+      case MOD_GAME_TYPE:
+        SetGameDefaults(P, Value);
+        break;
+      case MOD_GAME_DIFFICULTY:
+        P->Difficulty = Value;
+        break;
+      case MOD_GAME_SPEED:
+        P->GameSpeed = Value;
+        break;
+      case MOD_EXPLODING_LIFT:
+        P->Flags |= LIFT_WHILE_CLEARING;
+        break;
+      case MOD_COLOR_COUNT:
+        P->ColorCount = Value;
+        break;
+      case MOD_MINIMUM_MATCH:
+        P->MinMatchSize = Value;
+        break;
+      case MOD_INSTANT_SWAP:
+        P->Flags |= SWAP_INSTANTLY;
+        break;
+      case MOD_INSTANT_LIFT:
+        P->Flags |= INSTANT_LIFT;
+        break;
+      case MOD_TOUCH_CONTROL:
+        P->Flags |= STYLUS_CONTROL;
+        break;
+      case MOD_MOUSE_CONTROL:
+        P->Flags |= MOUSE_CONTROL;
+        break;
+      case MOD_PLAYFIELD_WIDTH:
+        P->Width = Value;
+        break;
+      case MOD_PLAYFIELD_HEIGHT:
+        P->Height = Value + 1;
+        break;
+    }
+  }
+  InitPlayfield(P);
+}
+
+int ShowModifierTypeList(int StartValue) {
+  int Initial = 1;
+  // the first option is empty, then the next is modifier 3 since the game type and such are skipped
+  int Choice = StartValue-3;
+  if(Choice < 0)
+    Choice = 0;
+
+  int PressedOK = 0;
+
+  while(!quit) {
+    SDL_Event e;
+    while(SDL_PollEvent(&e) != 0) {
+      if(e.type == SDL_QUIT)
+        quit = 1;
+    }
+
+    CombinedUpdateKeys(&Player1);
+    SDL_Delay(17);
+    if(Player1.KeyNew[KEY_BACK])
+      break;
+    if(Player1.KeyNew[KEY_OK]) {
+      PressedOK = 1;
+      break;
+    }
+
+    if(Player1.KeyNew[KEY_UP]) {
+      if(Choice)
+        Choice--;
+    }
+    if(Player1.KeyNew[KEY_DOWN]) {
+      if(ModifierList[Choice+1+3].Description)
+        Choice++;
+    }
+
+    if(!Initial && !MenuKeysPressed(&Player1))
+      continue;
+    Initial = 0;
+
+    SDL_SetRenderDrawColor(ScreenRenderer, 255, 255, 255, 255);
+    SDL_RenderClear(ScreenRenderer);
+
+    DrawText(GameFont, ScreenWidth/2, 2*8*ScaleFactor, TEXT_CENTERED|TEXT_WHITE, "Modifier select");
+
+    // display all modifier names and the cursor near them
+    for(int i=0;ModifierList[i+3].Description;i++) {
+      const char *Cursor1 = (i==Choice)?"-> ":"";
+      const char *Cursor2 = (i==Choice)?" <-":"";
+
+      const char *Name = ModifierList[i+3].Name;
+      if(i==0)
+        Name = "(none)";
+      DrawTextTTF(ChatFont, ScreenWidth/2, (16+(i+2)*10)*ScaleFactor, TEXT_CENTERED|TEXT_WHITE, "%s%s%s", Cursor1, Name, Cursor2);
+    }
+    // display a description for the modifier the cursor is on
+    if(Choice > 0) {
+      DrawTextTTF(ChatFont, ScreenWidth/2, ScreenHeight-24*ScaleFactor, TEXT_CENTERED|TEXT_WHITE, "%s", ModifierList[Choice+3].Description);
+    }
+
+    SDL_RenderPresent(ScreenRenderer);
+  }
+  // return the option, or 0 if none was picked
+  if(PressedOK)
+    return (!Choice)?0:Choice+3;
+  return -1;
+}
+
+void ShowPreGameOptions() {
+  int Initial = 1;
+  Player1.Modifiers[0][0] = MOD_GAME_TYPE;
+  Player1.Modifiers[1][0] = MOD_GAME_DIFFICULTY;
+  Player1.Modifiers[2][0] = MOD_GAME_SPEED;
+  Player1.Modifiers[2][1] = 1;
+  Player1.Modifiers[3][0] = MOD_EXPLODING_LIFT;
+  int Choice = 0;
+  int StartGame = 0;
+
+  while(!quit) {
+    SDL_Event e;
+    while(SDL_PollEvent(&e) != 0) {
+      if(e.type == SDL_QUIT)
+        quit = 1;
+    }
+
+    CombinedUpdateKeys(&Player1);
+    SDL_Delay(17);
+    if(Player1.KeyNew[KEY_BACK])
+      break;
+    if(Player1.KeyNew[KEY_OK] && Choice == 0) {
+      StartGame = 1;
+      break;
+    }
+    if(Player1.KeyNew[KEY_OK] && Choice > 3) {
+      int ModType = Player1.Modifiers[Choice-1][0];
+      int NewOption = ShowModifierTypeList(ModType);
+      if(NewOption >= 0) {
+        Player1.Modifiers[Choice-1][0] = NewOption;
+        Player1.Modifiers[Choice-1][1] = ModifierList[NewOption].Min;
+      }
+    }
+
+    if(!Initial && !MenuKeysPressed(&Player1))
+      continue;
+
+    if(Player1.KeyNew[KEY_UP]) {
+      Choice--;
+      if(Choice < 0)
+        Choice = MAX_MODIFIERS;
+    }
+    if(Player1.KeyNew[KEY_DOWN]) {
+      Choice++;
+      if(Choice > MAX_MODIFIERS)
+        Choice = 0;
+    }
+
+    if(Player1.KeyNew[KEY_LEFT] && Choice) {
+      int ModType = Player1.Modifiers[Choice-1][0];
+      Player1.Modifiers[Choice-1][1]--;
+      if(Player1.Modifiers[Choice-1][1] < ModifierList[ModType].Min)
+        Player1.Modifiers[Choice-1][1] = ModifierList[ModType].Max;
+    }
+    if(Player1.KeyNew[KEY_RIGHT] && Choice) {
+      int ModType = Player1.Modifiers[Choice-1][0];
+      Player1.Modifiers[Choice-1][1]++;
+      if(Player1.Modifiers[Choice-1][1] > ModifierList[ModType].Max)
+        Player1.Modifiers[Choice-1][1] = ModifierList[ModType].Min;
+    }
+    Initial = 0;
+
+    SDL_SetRenderDrawColor(ScreenRenderer, 255, 255, 255, 255);
+    SDL_RenderClear(ScreenRenderer);
+
+    DrawText(GameFont, ScreenWidth/2, 2*8*ScaleFactor, TEXT_CENTERED|TEXT_WHITE, "Game Select");
+
+    for(int i=0;i<(MAX_MODIFIERS+1);i++) {
+      const char *Cursor1 = (i==Choice)?"-> ":"";
+      const char *Cursor2 = (i==Choice)?" <-":"";
+
+      if(i > 0) {
+        int ModType = Player1.Modifiers[i-1][0];
+        int HasValue = ModifierList[ModType].Min || ModifierList[ModType].Max;
+        const char **OptionNames = ModifierList[ModType].Names;
+        if(!HasValue)
+          sprintf(TempString, "%s%s%s", Cursor1, ModifierList[ModType].Name, Cursor2);
+        else if(!OptionNames) 
+          sprintf(TempString, "%s%s: %i%s", Cursor1, ModifierList[ModType].Name, Player1.Modifiers[i-1][1], Cursor2);
+        else if(OptionNames)
+          sprintf(TempString, "%s%s: %s%s", Cursor1, ModifierList[ModType].Name, OptionNames[Player1.Modifiers[i-1][1]], Cursor2);
+      } else {
+        sprintf(TempString, "%sStart game!%s", Cursor1, Cursor2);
+      }
+
+      DrawTextTTF(ChatFont, ScreenWidth/2, (16+(i+2)*10)*ScaleFactor, TEXT_CENTERED|TEXT_WHITE, TempString);
+    }
+
+    if(Choice > 0) {
+      int ModType = Player1.Modifiers[Choice-1][0];
+      DrawTextTTF(ChatFont, ScreenWidth/2, ScreenHeight-24*ScaleFactor, TEXT_CENTERED|TEXT_WHITE, "%s", ModifierList[ModType].Description);
+    }
+
+    SDL_RenderPresent(ScreenRenderer);
+  }
+
+  if(StartGame) {
+    ApplyModifiers(&Player1);
+    GameplayStart();
+  }
+}

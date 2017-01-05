@@ -139,6 +139,8 @@ void DrawText(SDL_Texture* Font, int DestX, int DestY, int Flags, const char *fm
   va_start(args, fmt);
   vsnprintf(Buffer, sizeof(Buffer), fmt, args);
   va_end(args);
+  if(!*Buffer)
+    return;
 
   // render the text
   int FontW, FontH;
@@ -166,6 +168,8 @@ int DrawTextTTF(TTF_Font* Font, int DestX, int DestY, int Flags, const char *fmt
   va_start(args, fmt);
   vsnprintf(Buffer, sizeof(Buffer), fmt, args);
   va_end(args);
+  if(!*Buffer)
+    return 0;
 
   if(Flags & TEXT_CENTERED) {
     int Width, Height;

@@ -50,13 +50,9 @@ void SetGameDefaults(struct Playfield *P, int Game);
 void InitPlayfield(struct Playfield *P);
 int ShowTitle();
 void ShowMainOptions();
+void ShowPreGameOptions();
 
 void GameplayStart() {
-  memset(&Player1, 0, sizeof(struct Playfield));
-  Player1.Flags = LIFT_WHILE_CLEARING | MOUSE_CONTROL;
-  SetGameDefaults(&Player1, FRENZY);
-  InitPlayfield(&Player1);
-
 /*
   struct GarbageSlab *Slab = (struct GarbageSlab*)malloc(sizeof(struct GarbageSlab));
   memset(Slab, 0, sizeof(struct GarbageSlab));
@@ -84,10 +80,15 @@ void GameplayStart() {
       } else if(e.type == SDL_KEYUP) {
         if(e.key.keysym.scancode == SDL_SCANCODE_1)
           FrameAdvanceContinuous = 0;
-      } else if(e.type == SDL_MOUSEMOTION && (Player1.Flags & MOUSE_CONTROL)) {
+      } else if(e.type == SDL_MOUSEBUTTONDOWN && (Player1.Flags & MOUSE_CONTROL)) {
+        if(e.button.button == SDL_BUTTON_LEFT)
+          Player1.KeyNew[KEY_ROTATE_L] = 1;
+        else if(e.button.button == SDL_BUTTON_RIGHT)
+          Player1.KeyDown[KEY_LIFT] = 1;          
+      } else if(e.type == SDL_MOUSEMOTION && (Player1.Flags & (MOUSE_CONTROL | STYLUS_CONTROL))) {
         int Buttons = SDL_GetMouseState(NULL, NULL);
         // ignore if button isn't pressed
-        if(Buttons & SDL_BUTTON(SDL_BUTTON_LEFT)) {
+        if(Buttons & SDL_BUTTON(SDL_BUTTON_LEFT) || (Player1.Flags & MOUSE_CONTROL)) {
           int VisualWidth = Player1.Width * TILE_W;
           int VisualHeight = (Player1.Height-1) * TILE_H;
           int X = (ScreenWidth/2)-(Player1.Width*TILE_W)/2;
@@ -95,9 +96,15 @@ void GameplayStart() {
           int Rise = Player1.Rise * (TILE_H / 16);
           // ignore if outside the playfield
           if(e.motion.x > X && e.motion.x < X+VisualWidth && e.motion.y > Y && e.motion.y < Y+VisualHeight) {
-            int MouseX = (e.motion.x - X) / TILE_W;
+            int MouseX = (e.motion.x - X) / TILE_W;;
             int MouseY = (e.motion.y - Y + Rise) / TILE_H;
-            if(Player1.MouseX != MouseX && Player1.MouseY == MouseY) {
+            if(Player1.Flags & MOUSE_CONTROL) { // mouse mode targets the middle of two tiles horizontally
+              Player1.CursorX = (e.motion.x - X - TILE_W/2) / TILE_W;
+              Player1.CursorY = (e.motion.y - Y + Rise) / TILE_H;
+              if(Player1.CursorX >= Player1.Width-1)
+                Player1.CursorX--;
+            }
+            if((Player1.Flags & STYLUS_CONTROL) && Player1.MouseX != MouseX && Player1.MouseY == MouseY) {
               Player1.KeyNew[KEY_ROTATE_L] = 1;
               Player1.CursorX = MouseX - (MouseX > Player1.MouseX);
               Player1.CursorY = MouseY;
@@ -139,6 +146,7 @@ int main(int argc, char *argv[]) {
   PrefPath = SDL_GetPrefPath("Bushytail Software", "NetPuzzleArena");
   GetConfigPath();
   ParseINI(fopen(TempString, "rb"), INIConfigHandler);
+  memset(&Player1, 0, sizeof(struct Playfield));
 
   // read parameters
   for(int i=1; i<argc; i++) {
@@ -223,7 +231,7 @@ int main(int argc, char *argv[]) {
   while(!quit)
     switch(ShowTitle()) {
       case 0:
-        GameplayStart();
+        ShowPreGameOptions();
         break;
       case 1:
         break;
