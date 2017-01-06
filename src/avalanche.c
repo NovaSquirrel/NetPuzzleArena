@@ -1,8 +1,23 @@
+/*
+ * Net Puzzle Arena
+ *
+ * Copyright (C) 2016-2017 NovaSquirrel
+ *
+ * This program is free software: you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #include "puzzle.h"
 
-int GetTile1(struct Playfield *P, int x, int y) {
-  return GetTile(P, P->CursorX + x, P->CursorY + y);
-}
 int GetTile2(struct Playfield *P, int x, int y) {
   return GetTile(P, P->CursorX + DirX[P->Direction] + x, P->CursorY + DirY[P->Direction] + y);
 }
@@ -101,7 +116,7 @@ void UpdateAvalanche(struct Playfield *P) {
     P->Direction = OldDirection;
   }
 
-  if(GetTile1(P, 0, 1) || GetTile2(P, 0, 1) || P->CursorY == P->Height-2 || P->CursorY + DirY[P->Direction] == P->Height - 2) {
+  if(P->CursorY == P->Height-2 || (P->CursorY + DirY[P->Direction]) == P->Height - 2 || GetTile1(P, 0, 1) || GetTile2(P, 0, 1)) {
     P->LockTimer++;
     if(P->LockTimer > 16) {
       SetTile(P, P->CursorX, P->CursorY, P->SwapColor1);

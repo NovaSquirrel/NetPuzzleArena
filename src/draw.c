@@ -121,6 +121,10 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
   } else if(P->GameType == AVALANCHE) {
     blit(TileSheet, ScreenRenderer, TILE_W*P->SwapColor1, 0, DrawX+P->CursorX*TILE_W, DrawY+P->CursorY*TILE_H-Rise, TILE_W, TILE_H);
     blit(TileSheet, ScreenRenderer, TILE_W*P->SwapColor2, 0, DrawX+(P->CursorX+DirX[P->Direction])*TILE_W, DrawY+(P->CursorY+DirY[P->Direction])*TILE_H-Rise, TILE_W, TILE_H);
+  } else if(P->GameType == PILLARS) {
+    blit(TileSheet, ScreenRenderer, TILE_W*P->SwapColor1, 0, DrawX+P->CursorX*TILE_W, DrawY+P->CursorY*TILE_H-Rise, TILE_W, TILE_H);
+    blit(TileSheet, ScreenRenderer, TILE_W*P->SwapColor2, 0, DrawX+P->CursorX*TILE_W, DrawY+P->CursorY*TILE_H-Rise+TILE_H, TILE_W, TILE_H);
+    blit(TileSheet, ScreenRenderer, TILE_W*P->SwapColor3, 0, DrawX+P->CursorX*TILE_W, DrawY+P->CursorY*TILE_H-Rise+TILE_H*2, TILE_W, TILE_H);
   } else
     blit(TileSheet, ScreenRenderer, 0, TILE_H, DrawX+P->CursorX*TILE_W, DrawY+P->CursorY*TILE_H-Rise, TILE_W, TILE_H);
 

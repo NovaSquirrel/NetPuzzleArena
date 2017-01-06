@@ -62,11 +62,7 @@ int CountConnected(struct Playfield *P, int X, int Y, int *Used) {
   return Sum;
 }
 
-// Clear all of the same-colored blocks that are touching each other in a group, from a starting point
-void ClearConnected(struct Playfield *P, int X, int Y) {
-  int Color = GetTile(P, X, Y);
-  SetTile(P, X, Y, BLOCK_EMPTY);
-
+void AddClearingTile(int X, int Y, int Color) {
   struct MatchRow *Match = (struct MatchRow*)calloc(1, sizeof(struct MatchRow));
   Match->Color = Color;
   Match->X = X;
@@ -86,6 +82,14 @@ void ClearConnected(struct Playfield *P, int X, int Y) {
   if(CurMatch)
     CurMatch->Child = Match;
   CurMatch = Match;
+}
+
+// Clear all of the same-colored blocks that are touching each other in a group, from a starting point
+void ClearConnected(struct Playfield *P, int X, int Y) {
+  int Color = GetTile(P, X, Y);
+  SetTile(P, X, Y, BLOCK_EMPTY);
+
+  AddClearingTile(X, Y, Color);
 
   if(X-1 >= 0 && GetTile(P, X-1, Y) == Color)
     ClearConnected(P, X-1, Y);
@@ -213,14 +217,14 @@ void ClearMatchAnimation(struct Playfield *P, int ChainMarkers) {
 // Also has those blocks fall.
 // Returns 1 if blocks are currently falling, or 0 if it's time for the player to drop another piece.
 int ClearAvalancheStyle(struct Playfield *P) {
-  if(P->Match) // stop everything if blocks are clearing
-    return 1;
-  if(MakeBlocksFall(P))
+  if(P->Match || MakeBlocksFall(P)) // clearing and falling blocks everything else 
     return 1;
 
   // make an array for CountConnected to use
   int Used[P->Width * P->Height];
   memset(Used, 0, sizeof(Used));
+
+  int SoundPlayed = 0;
 
   // look for groups and clear them
   for(int y=0; y<P->Height; y++)
@@ -231,7 +235,10 @@ int ClearAvalancheStyle(struct Playfield *P) {
       int Sum = CountConnected(P, x, y, Used);
       if(Sum >= P->MinMatchSize) {
 #ifdef ENABLE_AUDIO
-        Mix_PlayChannel(-1, SampleCombo, 0);
+        if(!SoundPlayed) {
+          Mix_PlayChannel(-1, SampleCombo, 0);
+          SoundPlayed = 1;
+        }
 #endif
         // clear out the tiles
         FirstMatch = NULL;
@@ -247,9 +254,78 @@ int ClearAvalancheStyle(struct Playfield *P) {
       }
     }
 
-  if(TestBlocksFall(P))
+  if(TestBlocksFall(P) || P->Match)
     return 1;
-  if(P->Match)
+  return 0;
+}
+
+int ClearPillarsStyle(struct Playfield *P, int Diagonals) {
+  if(P->Match || MakeBlocksFall(P)) // clearing and falling blocks everything else
+    return 1;
+
+  int Used[P->Width][P->Height];
+  memset(Used, 0, sizeof(Used));
+
+  int SoundPlayed = 0;
+
+  FirstMatch = NULL;
+  CurMatch = NULL;
+
+  // Search for matches (lines of the same color)
+  for(int y=0; y<P->Height; y++) {
+    for(int x=0; x<P->Width; x++) {
+      for(int dir=EAST; dir<WEST; dir+=((Diagonals)?1:2)) {
+         int Count = 0;
+         int Color = GetColor(P, x, y);
+         if(!Color)
+           continue;
+         // See how far the line goes
+         while(1) {
+           int TestX = x + DirX[dir] * Count;
+           int TestY = y + DirY[dir] * Count;
+           if(TestX < 0 || TestY < 0 || TestX >= P->Width || TestY >= P->Height)
+             break;
+           if(GetColor(P, TestX, TestY) != Color)
+             break;
+           Count++;
+         }
+         // It's a match if it's over the minimum size
+         if(Count >= P->MinMatchSize) {
+#ifdef ENABLE_AUDIO
+           if(!SoundPlayed) {
+             Mix_PlayChannel(-1, SampleCombo, 0);
+             SoundPlayed = 1;
+           }
+#endif
+
+           for(int i=0; i<Count; i++) {
+             int SetX = x + DirX[dir] * i;
+             int SetY = y + DirY[dir] * i;
+             if(!Used[SetX][SetY])
+               AddClearingTile(SetX, SetY, Color);
+             Used[SetX][SetY] = 1;
+           }
+         }
+      }
+    }
+  }
+
+  for(int y=0; y<P->Height; y++) {
+    for(int x=0; x<P->Width; x++) {
+      if(Used[x][y])
+        SetTile(P, x, y, BLOCK_EMPTY);
+    }
+  }
+
+  // Attach the list of clearing tiles to the playfield
+  if(FirstMatch) {
+    if(P->Match)
+      FirstMatch->Next = P->Match;
+    P->Match = FirstMatch;
+    FirstMatch->Timer1 = 10;
+  }
+
+  if(TestBlocksFall(P) || P->Match)
     return 1;
   return 0;
 }
@@ -317,8 +393,8 @@ void RandomizeRow(struct Playfield *P, int y) {
   }
 }
 
-void UpdatePillars(struct Playfield *P) {
-
+int GetTile1(struct Playfield *P, int x, int y) {
+  return GetTile(P, P->CursorX + x, P->CursorY + y);
 }
 
 void UpdateDiceMatch(struct Playfield *P) {
