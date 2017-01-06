@@ -129,6 +129,11 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
     DrawTallInteger(DrawX+Num->X, DrawY+Num->Y-Rise, Num->Flags, Num->Number);
 
   SDL_RenderSetClipRect(ScreenRenderer, NULL);
+
+  // Draw "paused"
+  if(P->Paused) {
+    DrawText(GameFont, ScreenWidth/2, ScreenHeight-16*ScaleFactor, TEXT_CENTERED, "Paused");
+  }
 }
 
 void DrawText(SDL_Texture* Font, int DestX, int DestY, int Flags, const char *fmt, ...) {

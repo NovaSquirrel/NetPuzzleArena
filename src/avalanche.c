@@ -10,6 +10,11 @@ int GetTile2(struct Playfield *P, int x, int y) {
 void UpdateAvalanche(struct Playfield *P) {
   int GoDown = 0;
 
+  if(P->KeyNew[KEY_PAUSE])
+    P->Paused ^= 1;
+  if(P->Paused)
+    return;
+
   if(P->SwapColor1 == BLOCK_EMPTY && P->SwapColor2 == BLOCK_EMPTY) {
     if(ClearAvalancheStyle(P))
       return;
@@ -28,14 +33,17 @@ void UpdateAvalanche(struct Playfield *P) {
     P->CursorX -= (P->CursorX != 0) && (P->CursorX + DirX[P->Direction] != 0) && !GetTile1(P, -1, 0) && !GetTile2(P, -1, 0);
     P->LockTimer = 0;
   }
+
   if(P->KeyNew[KEY_RIGHT]) {
     P->CursorX += (P->CursorX != P->Width-1) && (P->CursorX + DirX[P->Direction] != P->Width-1) && !GetTile1(P, 1, 0) && !GetTile2(P, 1, 0);
     P->LockTimer = 0;
   }
+
   if(P->KeyNew[KEY_ROTATE_L]) {
     P->Direction = (P->Direction - 2) & 7;
     P->LockTimer = 0;
   }
+
   if(P->KeyNew[KEY_ROTATE_R]) {
     P->Direction = (P->Direction + 2) & 7;
     P->LockTimer = 0;
@@ -62,11 +70,12 @@ void UpdateAvalanche(struct Playfield *P) {
       P->CursorY--;
   }
 
-
   if(P->CursorX + DirX[P->Direction] >= P->Width)
     P->CursorX--;
   if(P->CursorX + DirX[P->Direction] < 0)
     P->CursorX++;
+  if(P->CursorY + DirY[P->Direction] >= P->Height - 1)
+    P->CursorY--;
 
   if(P->KeyDown[KEY_DOWN] && !(retraces & 3))
     GoDown = 1;
