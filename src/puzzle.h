@@ -277,6 +277,7 @@ int CountConnected(struct Playfield *P, int X, int Y, int *Used);
 void ClearConnected(struct Playfield *P, int X, int Y);
 int MakeBlocksFall(struct Playfield *P);
 int TestBlocksFall(struct Playfield *P);
+void ClearMatchAnimation(struct Playfield *P, int ChainMarkers);
 int ClearAvalancheStyle(struct Playfield *P);
 void UpdateKeys(struct Playfield *P);
 int CombinedUpdateKeys(struct Playfield *P);

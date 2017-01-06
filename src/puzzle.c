@@ -39,7 +39,7 @@ int FrameAdvance = 0;
 struct JoypadMapping ActiveJoysticks[ACTIVE_JOY_MAX];
 
 // config flags
-int ScaleFactor = 1, NoAcceleration = 0;
+int ScaleFactor = 2, NoAcceleration = 0;
 
 #ifdef ENABLE_AUDIO
   Mix_Chunk *SampleSwap, *SampleDrop, *SampleDisappear, *SampleMove, *SampleCombo;

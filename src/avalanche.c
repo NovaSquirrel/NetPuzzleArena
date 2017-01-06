@@ -9,6 +9,8 @@ int GetTile2(struct Playfield *P, int x, int y) {
 
 void UpdateAvalanche(struct Playfield *P) {
   int GoDown = 0;
+  int OldX = P->CursorX;
+  int OldY = P->CursorY;
 
   if(P->KeyNew[KEY_PAUSE])
     P->Paused ^= 1;
@@ -16,6 +18,7 @@ void UpdateAvalanche(struct Playfield *P) {
     return;
 
   if(P->SwapColor1 == BLOCK_EMPTY && P->SwapColor2 == BLOCK_EMPTY) {
+    ClearMatchAnimation(P, 0);
     if(ClearAvalancheStyle(P))
       return;
 
@@ -89,6 +92,13 @@ void UpdateAvalanche(struct Playfield *P) {
   if(GoDown) {
     if(!GetTile1(P, 0, 1) && !GetTile2(P, 0, 1) && P->CursorY != P->Height-2 && P->CursorY + DirY[P->Direction] != P->Height - 2)
       P->CursorY++;
+  }
+
+  // revert to the old direction and position if we're overlapping another thing now
+  if(GetTile1(P, 0, 0) || GetTile2(P, 0, 0)) {
+    P->CursorX = OldX;
+    P->CursorY = OldY;
+    P->Direction = OldDirection;
   }
 
   if(GetTile1(P, 0, 1) || GetTile2(P, 0, 1) || P->CursorY == P->Height-2 || P->CursorY + DirY[P->Direction] == P->Height - 2) {

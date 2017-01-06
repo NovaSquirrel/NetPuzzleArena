@@ -334,7 +334,9 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 
     // play sound effects and make visual effects
     if(ComboSize >= 4 || (ComboSize == 3 && ComboChainSize)) {
+#ifdef ENABLE_AUDIO
       Mix_PlayChannel(-1, SampleCombo, 0);
+#endif
 
       struct ComboNumber *Num = (struct ComboNumber*)malloc(sizeof(struct ComboNumber));
       Num->X = MatchULX*TILE_W + TILE_W/2;
@@ -364,67 +366,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
     FirstMatch->Timer1 = 46;
   }
   
-  // Do animation for clearing blocks
-  for(struct MatchRow *Match = P->Match; Match;) {
-    struct MatchRow *NextMatch = Match->Next;
-
-    // Stay white for a moment
-    if(Match->Timer1) {
-      Match->Timer1--;
-      Match = NextMatch;
-      continue;
-    }
-
-    // Start erasing blocks.
-    // Find a match that still has blocks to erase
-    struct MatchRow *Last = Match;
-    while(!Last->DisplayWidth)
-      Last = Last->Child;
-
-    // Wait a delay before actually erasing a block
-    Last->Timer2--;
-    if(!Last->Timer2) {
-      Last->Timer2 = 10; // Reset the timer
-
-      Last->DisplayX++;
-      Last->DisplayWidth--;
-      P->Score += 10;
-#ifdef ENABLE_AUDIO
-      Mix_PlayChannel(-1, SampleDisappear, 0);
-#endif
-
-      // did the last one finish clearing out?
-      if(!Last->DisplayWidth && !Last->Child) {
-
-        // adjust pointers
-        if(P->Match == Match) {
-          P->Match = P->Match->Next;
-        } else {
-          struct MatchRow *Find = P->Match;
-          while(Find->Next != Match)
-            Find = Find->Next;
-          Find->Next = Match->Next;
-        }
-
-        // free, and also erase all those blocks
-        for(struct MatchRow *Free = Match; Free;) {
-          // mark chain counters
-          for(int x=Free->X; x<(Free->X+Free->Width); x++) {
-            for(int y=Free->Y; GetColor(P, x, y) && y && !IsGarbage[y*P->Width + x]; y--) {
-              int Chain = GetTile(P, x, y) & PF_CHAIN;
-              if(Chain < Free->Chain+PF_CHAIN_ONE)
-                SetTile(P, x, y, GetColor(P, x, y) | (Free->Chain+PF_CHAIN_ONE));
-            }
-          }
-
-          struct MatchRow *Next = Free->Child;
-          free(Free);
-          Free = Next;
-        }
-      }
-    }
-    Match = NextMatch;
-  }
+  ClearMatchAnimation(P, 1);
 
   // Change disabled blocks back to regular ones
   memset(Used, 0, sizeof(Used));
