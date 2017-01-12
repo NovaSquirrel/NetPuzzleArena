@@ -521,7 +521,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 /////////////////// RISING ///////////////////
 
   // Handle rising
-  if(!P->LiftKeyOn && !P->RiseStopTimer && (!P->Match || P->Flags&LIFT_WHILE_CLEARING) && !IsChainActive && P->KeyDown[KEY_LIFT]) {
+  if(!P->LiftKeyOn && !P->RiseStopTimer && (!P->Match || P->Flags&LIFT_WHILE_CLEARING) && P->KeyDown[KEY_LIFT]) {
     if(P->Flags & INSTANT_LIFT) {
       if(P->KeyNew[KEY_LIFT]) {
         P->Rise = 16;
@@ -538,7 +538,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
     P->Rise++;
   else if(P->RiseStopTimer)
     P->RiseStopTimer--;
-  else if(!P->Match && !(retraces & 15))
+  else if(!P->Match && !IsChainActive && !(retraces & 15))
     P->Rise++;
   if(P->Rise >= 16) {
     P->LiftKeyOn = 0;
