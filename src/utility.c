@@ -262,7 +262,7 @@ void UpdateKeysExtra(struct Playfield *P) {
       else
         P->KeyRepeat[i] = 0;
 
-      if(P->KeyRepeat[i] > 8)
+      if(P->KeyRepeat[i] > 10)
         P->KeyNew[i] = 1;
     }
   }
