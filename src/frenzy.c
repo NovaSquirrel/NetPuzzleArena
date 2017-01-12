@@ -189,6 +189,8 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 
 /////////////////// MATCHES ///////////////////
 
+  int IncrementedChain = 0; // can only increment chain once per frame
+
   // Look for matches
   struct MatchRow *FirstMatch = NULL, *CurMatch = NULL;
   int Used[P->Width][P->Height];  // horizontal
@@ -235,14 +237,17 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 
       if(Vert >= P->MinMatchSize-1 || Horiz >= P->MinMatchSize-1)
         if(MaxChain) {
-          P->ChainCounter++;
+          if(!IncrementedChain) {
+            P->ChainCounter++;
+            IncrementedChain = 1;
+            P->Score += PointsForChainPart(P->ChainCounter);
+          }
           // was originally using MaxChain>>8 here but that's not accurate to the original game
           // which I think can only handle one chain at a time
           // see https://www.youtube.com/watch?v=2GwvWqrhp4o
           IsChainActive = 1;
 //          SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Chain (maxchain) %i", MaxChain>>8);
           SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Chain %i", P->ChainCounter);
-          P->Score += PointsForChainPart(P->ChainCounter);
         }
 
       if(Horiz >= P->MinMatchSize-1) {
@@ -338,20 +343,22 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
       Mix_PlayChannel(-1, SampleCombo, 0);
 #endif
 
-      struct ComboNumber *Num = (struct ComboNumber*)malloc(sizeof(struct ComboNumber));
-      Num->X = MatchULX*TILE_W + TILE_W/2;
-      Num->Y = MatchULY*TILE_H + TILE_H/2;
-      if(P->ChainCounter) {
-        Num->Number = P->ChainCounter+1; //(ComboChainSize>>8)+1;
-        Num->Flags = TEXT_CHAIN|TEXT_CENTERED;
-      } else {
-        Num->Number = ComboSize;
-        Num->Flags = TEXT_CENTERED;
+      if(ComboSize >= 4 || IncrementedChain) {
+        struct ComboNumber *Num = (struct ComboNumber*)malloc(sizeof(struct ComboNumber));
+        Num->X = MatchULX*TILE_W + TILE_W/2;
+        Num->Y = MatchULY*TILE_H + TILE_H/2;
+        if(P->ChainCounter) {
+          Num->Number = P->ChainCounter+1; //(ComboChainSize>>8)+1;
+          Num->Flags = TEXT_CHAIN|TEXT_CENTERED;
+        } else {
+          Num->Number = ComboSize;
+          Num->Flags = TEXT_CENTERED;
+        }
+        Num->Timer = 30;
+        Num->Next = P->ComboNumbers;
+        Num->Speed = 0;
+        P->ComboNumbers = Num;
       }
-      Num->Timer = 30;
-      Num->Next = P->ComboNumbers;
-      Num->Speed = 0;
-      P->ComboNumbers = Num;
     }
   }
 
@@ -514,7 +521,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 /////////////////// RISING ///////////////////
 
   // Handle rising
-  if(!P->LiftKeyOn && !P->RiseStopTimer && (!P->Match || P->Flags&LIFT_WHILE_CLEARING) && P->KeyDown[KEY_LIFT]) {
+  if(!P->LiftKeyOn && !P->RiseStopTimer && (!P->Match || P->Flags&LIFT_WHILE_CLEARING) && !IsChainActive && P->KeyDown[KEY_LIFT]) {
     if(P->Flags & INSTANT_LIFT) {
       if(P->KeyNew[KEY_LIFT]) {
         P->Rise = 16;
