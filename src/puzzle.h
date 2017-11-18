@@ -271,7 +271,6 @@ void UpdateCookie(struct Playfield *P);
 void UpdateReversiBall(struct Playfield *P);
 void UpdateDiceMatch(struct Playfield *P);
 void UpdateStacker(struct Playfield *P);
-int Random(int Choices);
 
 void TriggerGarbageClear(struct Playfield *P, int x, int y, int *IsGarbage);
 int CountConnected(struct Playfield *P, int X, int Y, int *Used);
@@ -287,6 +286,12 @@ void UpdateKeysFromMap(struct JoypadMapping *Map, int *Out);
 void UpdateVolumes();
 void GetConfigPath();
 void RemoveLineEndings(char *buffer);
+
+// PCG random
+void RandomSeed();
+uint32_t Random(uint32_t Bound);
+uint32_t RandomRaw();
+uint32_t RandomMinMax(uint32_t Min, uint32_t Max);
 
 struct GameModifier {
   const char *Name;

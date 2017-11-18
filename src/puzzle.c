@@ -142,6 +142,7 @@ void GameplayStart() {
 int main(int argc, char *argv[]) {
   // seed the randomizer
   srand(time(NULL));
+  RandomSeed();
 
   PrefPath = SDL_GetPrefPath("Bushytail Software", "NetPuzzleArena");
   GetConfigPath();

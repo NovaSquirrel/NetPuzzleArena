@@ -84,6 +84,7 @@ void SDL_MessageBox(int Type, const char *Title, SDL_Window *Window, const char 
   va_end(argp);
 }
 
+/*
 int Random(int Choices) {
   int Out, Mask;
   if(Choices == 2)
@@ -107,6 +108,7 @@ int Random(int Choices) {
       return Out;
   }
 }
+*/
 
 void GetConfigPath() {
   sprintf(TempString, "%sconfig.ini", PrefPath);
