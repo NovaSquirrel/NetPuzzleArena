@@ -33,7 +33,7 @@ struct GameModifier ModifierList[] = {
  {"Difficulty",         "Game difficulty, affects various things", MOD_REQUIRED, 0, 2, DifficultyNames},
  {"Speed",              "Speed of tile rising (or falling)",       MOD_REQUIRED, 0, 100},
  {"Exploding lift",     "Can still lift while tiles are clearing"},
- {"Color count",        "Number of different",                     0, 2, 8},
+ {"Color count",        "Number of different colors used",          0, 2, 8},
  {"Minimum match size", "Amount of tiles needed for a match",      0, 2, 10},
  {"Instant swap",       "Swaps take effect immediately"},
  {"Instant lift",       "Lifts take effect immediately"},
