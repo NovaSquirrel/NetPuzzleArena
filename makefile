@@ -1,4 +1,4 @@
-objlist := puzzle utility playfield draw frenzy avalanche reversiball pillars menu config random
+objlist := puzzle utility playfield draw frenzy frenzyct avalanche reversiball pillars menu config random
 program_title = puzzle
  
 CC := gcc

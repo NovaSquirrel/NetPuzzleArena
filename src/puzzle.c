@@ -48,6 +48,7 @@ int ScaleFactor = 2, NoAcceleration = 0;
 void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY);
 void SetGameDefaults(struct Playfield *P, int Game);
 void InitPlayfield(struct Playfield *P);
+void FreePlayfield(struct Playfield *P);
 int ShowTitle();
 void ShowMainOptions();
 void ShowPreGameOptions();
@@ -62,6 +63,7 @@ void GameplayStart() {
   Slab->Height = 3;
   Player1.GarbageSlabs = Slab;
 */
+  InitPlayfield(&Player1);
 
   int FrameAdvanceContinuous = 0;
   while(!quit) {
@@ -137,6 +139,8 @@ void GameplayStart() {
 
     retraces++;
   }
+
+  FreePlayfield(&Player1);
 }
 
 int main(int argc, char *argv[]) {

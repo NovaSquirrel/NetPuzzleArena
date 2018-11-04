@@ -43,17 +43,9 @@ struct ConfigItem {
   {NULL}, // <-- end marker
 };
 
-// removes one line ending if found
-void RemoveLineEnding(char *text, char ending) {
-  text = strrchr(text, ending);
-  if(text)
-    *text = 0;
-}
-
 // removes \n or \r if found on the end of a string
 void RemoveLineEndings(char *buffer) {
-  RemoveLineEnding(buffer, '\n');
-  RemoveLineEnding(buffer, '\r');
+  buffer[strcspn(buffer, "\r\n")] = 0;
 }
 
 void SaveConfigINI() {

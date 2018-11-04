@@ -63,7 +63,7 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
     int SourceY = Heads->Timer1?TILE_H:TILE_H*2;
     for(struct MatchRow *Match = Heads; Match; Match=Match->Child) {
 #ifdef DISPLAY_CHAIN_COUNT
-      DrawText(GameFont, DrawX+Match->X*TILE_W, DrawY+Match->Y*TILE_H-Rise, 0, "!%i", Match->Chain>>8);
+      DrawText(GameFont, DrawX+Match->X*TILE_W, DrawY+Match->Y*TILE_H-Rise, 0, "!%i", Match->Chain);
 #endif
       for(int i=0; i<Match->DisplayWidth; i++)
         blit(TileSheet, ScreenRenderer, TILE_W*Match->Color, SourceY, DrawX+(Match->DisplayX+i)*TILE_W, DrawY+Match->Y*TILE_H-Rise, TILE_W, TILE_H);
@@ -115,7 +115,7 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
   }
 
   // Draw the cursor
-  if(P->GameType == FRENZY) {
+  if(P->GameType == FRENZY || P->GameType == FRENZY_CT) {
     blit(TileSheet, ScreenRenderer, 0, TILE_H, DrawX+P->CursorX*TILE_W, DrawY+P->CursorY*TILE_H-Rise, TILE_W, TILE_H);
     blit(TileSheet, ScreenRenderer, 0, TILE_H, DrawX+(P->CursorX+1)*TILE_W, DrawY+P->CursorY*TILE_H-Rise, TILE_W, TILE_H);
   } else if(P->GameType == AVALANCHE) {

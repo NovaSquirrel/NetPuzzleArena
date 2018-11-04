@@ -73,6 +73,7 @@ extern Mix_Chunk *SampleSwap, *SampleDrop, *SampleDisappear, *SampleMove, *Sampl
 
 enum GameTypes {
   FRENZY,
+  FRENZY_CT,
   AVALANCHE,
   PILLARS,
   DICE_MATCH,
@@ -197,6 +198,9 @@ struct Playfield {
   uint32_t Score;
   int MouseX, MouseY;
 
+  // Extra per-game data
+  void *Extra;
+
   // Frenzy
   int Rise;
   int LiftKeyOn, RiseStopTimer;
@@ -227,9 +231,8 @@ struct Playfield {
 
 // different parts of the playfield int
 #define PF_COLOR        0x000ff
-#define PF_CHAIN        0x0ff00
-#define PF_CHAIN_ONE    0x00100
-#define PF_JUST_LANDED  0x10000
+#define PF_CHAIN        0x00100
+#define PF_JUST_LANDED  0x00200
 enum TextDrawFlags {
   TEXT_CENTERED = 1,
   TEXT_WHITE = 2,
@@ -264,13 +267,6 @@ void RandomizeRow(struct Playfield *P, int y);
 void LogMessage(const char *fmt, ...);
 
 int RandomTileColor(struct Playfield *P);
-void UpdatePuzzleFrenzy(struct Playfield *P);
-void UpdateAvalanche(struct Playfield *P);
-void UpdatePillars(struct Playfield *P);
-void UpdateCookie(struct Playfield *P);
-void UpdateReversiBall(struct Playfield *P);
-void UpdateDiceMatch(struct Playfield *P);
-void UpdateStacker(struct Playfield *P);
 
 void TriggerGarbageClear(struct Playfield *P, int x, int y, int *IsGarbage);
 int CountConnected(struct Playfield *P, int X, int Y, int *Used);

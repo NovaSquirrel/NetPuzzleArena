@@ -18,6 +18,18 @@
  */
 #include "puzzle.h"
 
+void InitPuzzleFrenzy(struct Playfield *P);
+void InitPuzzleFrenzyCT(struct Playfield *P);
+void UpdatePuzzleFrenzy(struct Playfield *P);
+void UpdatePuzzleFrenzyCT(struct Playfield *P);
+void UpdateAvalanche(struct Playfield *P);
+void UpdatePillars(struct Playfield *P);
+void UpdateCookie(struct Playfield *P);
+void UpdateReversiBall(struct Playfield *P);
+void UpdateDiceMatch(struct Playfield *P);
+void UpdateStacker(struct Playfield *P);
+void FreePuzzleFrenzyCT(struct Playfield *P);
+
 int PlayfieldWidth = 6;
 int PlayfieldHeight = 13;
 
@@ -182,7 +194,7 @@ void ClearMatchAnimation(struct Playfield *P, int ChainMarkers) {
       // did the last one finish clearing out?
       if(!Last->DisplayWidth && !Last->Child) {
 
-        // adjust pointers
+        // adjust pointers so I can free this MatchRow in a little bit
         if(P->Match == Match) {
           P->Match = P->Match->Next;
         } else {
@@ -194,12 +206,15 @@ void ClearMatchAnimation(struct Playfield *P, int ChainMarkers) {
 
         // free, and also erase all those blocks
         for(struct MatchRow *Free = Match; Free;) {
-          // mark chain counters
+          // go up vertically and set chain flags on everything above
           for(int x=Free->X; x<(Free->X+Free->Width); x++) {
-            for(int y=Free->Y; GetColor(P, x, y) && y; y--) {
-              int Chain = GetTile(P, x, y) & PF_CHAIN;
-              if(ChainMarkers && Chain < Free->Chain+PF_CHAIN_ONE)
-                SetTile(P, x, y, GetColor(P, x, y) | (Free->Chain+PF_CHAIN_ONE));
+            for(int y=Free->Y; y; y--) {
+              // skip empty tiles
+              if(!GetColor(P, x, y))
+                continue;
+              // set the chain flag
+              if(ChainMarkers)
+                SetTile(P, x, y, GetColor(P, x, y) | PF_CHAIN);
             }
           }
 
@@ -335,6 +350,7 @@ void SetGameDefaults(struct Playfield *P, int Game) {
   P->GameType = Game;
   switch(Game) {
     case FRENZY:
+    case FRENZY_CT:
       P->MinMatchSize = 3;
       P->ColorCount = 5;
       P->Width = 6;
@@ -370,9 +386,16 @@ void InitPlayfield(struct Playfield *P) {
   // make random rows if playing Puzzle Frenzy
   switch(P->GameType) {
     case FRENZY:
-      for(int j=P->Height-5; j>0 && j<P->Height; j++)
-        RandomizeRow(P, j);
+      InitPuzzleFrenzy(P);
+      break;
+    case FRENZY_CT:
+      InitPuzzleFrenzyCT(P);
+      break;
   }
+}
+
+void FreePlayfield(struct Playfield *P) {
+
 }
 
 // Randomizes a given playfield row, and attempts to avoid making lines of more than 3 of the same color in a row
@@ -393,6 +416,7 @@ void RandomizeRow(struct Playfield *P, int y) {
   }
 }
 
+// Offset from cursor
 int GetTile1(struct Playfield *P, int x, int y) {
   return GetTile(P, P->CursorX + x, P->CursorY + y);
 }
@@ -441,6 +465,9 @@ void UpdatePlayfield(struct Playfield *P) {
   switch(P->GameType) {
     case FRENZY:
       UpdatePuzzleFrenzy(P);
+      break;
+    case FRENZY_CT:
+      UpdatePuzzleFrenzyCT(P);
       break;
     case AVALANCHE:
       UpdateAvalanche(P);

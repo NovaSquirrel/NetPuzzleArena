@@ -21,15 +21,14 @@
 SDL_Texture *GameLogo = NULL;
 void GameplayStart();
 void SetGameDefaults(struct Playfield *P, int Game);
-void InitPlayfield(struct Playfield *P);
 
 const char *DifficultyNames[] = {"Easy", "Normal", "Hard", NULL};
-const char *GameNames[] = {"Puzzle Frenzy", "Avalanche", "Pillars", "Dice game", "Reversi ball", "Cookie", "Stacker", NULL};
+const char *GameNames[] = {"Puzzle Frenzy", "Puzzle Frenzy (SNES)", "Avalanche", "Pillars", "Dice game", "Reversi ball", "Cookie", "Stacker", NULL};
 const char *MatchTypeNames[] = {"4 directions", "8 directions", "Groups", NULL};
 
 struct GameModifier ModifierList[] = {
  {"",                   "Press OK to choose a modifier",           0},
- {"Game type",          "Choose a base game to add modifiers to",  MOD_REQUIRED, 0, 6, GameNames},
+ {"Game type",          "Choose a base game to add modifiers to",  MOD_REQUIRED, 0, 7, GameNames},
  {"Difficulty",         "Game difficulty, affects various things", MOD_REQUIRED, 0, 2, DifficultyNames},
  {"Speed",              "Speed of tile rising (or falling)",       MOD_REQUIRED, 0, 100},
  {"Exploding lift",     "Can still lift while tiles are clearing"},
@@ -475,7 +474,6 @@ void ApplyModifiers(struct Playfield *P) {
         break;
     }
   }
-  InitPlayfield(P);
 }
 
 int ShowModifierTypeList(int StartValue) {

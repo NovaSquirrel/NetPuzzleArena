@@ -1,7 +1,7 @@
 /*
  * Net Puzzle Arena
  *
- * Copyright (C) 2016 NovaSquirrel
+ * Copyright (C) 2016-2018 NovaSquirrel
  *
  * This program is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -21,6 +21,11 @@
 #define HOVER_TIME 12
 extern int FrameAdvance;
 extern int FrameAdvanceMode;
+
+void InitPuzzleFrenzy(struct Playfield *P) {
+  for(int j=P->Height-5; j>0 && j<P->Height; j++)
+    RandomizeRow(P, j);
+}
 
 // Takes a combo size (in number of tiles) and figures out how much garbage it amounts to
 int GarbageForCombo(struct Playfield *P, int ComboSize, int *List, int ListSize) {
@@ -79,7 +84,6 @@ int PointsForChainPart(int Size) {
 void UpdatePuzzleFrenzy(struct Playfield *P) {
   int IsFalling[P->Width][P->Height];
   int IsGarbage[P->Width * P->Height];
-  int MaxActiveChain = 0;
   int IsChainActive = 0;
 
   // Mark the tiles that are currently falling for easy checking
@@ -99,8 +103,6 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
   for(struct MatchRow *Match = P->Match; Match; Match=Match->Next) {
     if(Match->Chain)
       IsChainActive = 1;
-    if(MaxActiveChain < (Match->Chain>>8))
-      MaxActiveChain = (Match->Chain>>8);
   }
   // Apparently I need to look at the playfield for chain counts too
   for(int x=0; x<P->Width; x++)
@@ -195,10 +197,8 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
   struct MatchRow *FirstMatch = NULL, *CurMatch = NULL;
   int Used[P->Width][P->Height];  // horizontal
   int UsedV[P->Width][P->Height]; // vertical
-  int ChainMap[P->Width][P->Height];
   memset(Used, 0, sizeof(Used));
   memset(UsedV, 0, sizeof(UsedV));
-  memset(ChainMap, 0, sizeof(ChainMap));
   for(int y=0; y<P->Height-1; y++)
     for(int x=0; x<P->Width; x++) {
       int Horiz = 0, Vert = 0, Color = GetColor(P, x, y);
@@ -208,7 +208,8 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
       if(y < P->Height-2 && !GetTile(P, x, y+1))
         continue;
 
-      int MaxChain = 0;
+      // Was there a chain in this match?
+      int MatchHasChain = 0;
 
       if(!Used[x][y])
         while((x+Horiz+1 < P->Width && GetColor(P, x+Horiz+1, y) == Color) &&
@@ -218,35 +219,32 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
         while(y+Vert+1 < P->Height-1 && !UsedV[x][y+Vert+1] && GetColor(P, x, y+Vert+1) == Color)
           Vert++;
 
-      // mark tiles vertically that were used in the combo, also look for max chain
+      // mark tiles vertically that were used in the combo, also look for tiles with chain flag
       if(Vert >= P->MinMatchSize-1) {
         for(int i=0; i<=Vert; i++) {
           UsedV[x][y+i] = 1;
-          int Chain = GetTile(P, x, y+i)&PF_CHAIN;
-          if(Chain > MaxChain)
-            MaxChain = Chain;
+          if(GetTile(P, x, y+i)&PF_CHAIN)
+            MatchHasChain = 1;
         }
       }
  
      // look at chain size first
       for(int i=0; i<=Horiz; i++) {
-        int Chain = GetTile(P, x+i, y)&PF_CHAIN;
-        if(Chain > MaxChain)
-          MaxChain = Chain;
+        if(GetTile(P, x+i, y)&PF_CHAIN)
+          MatchHasChain = 1;
       }
 
+      // Are the lines of continuous tiles long enough to make a combo/match?
       if(Vert >= P->MinMatchSize-1 || Horiz >= P->MinMatchSize-1)
-        if(MaxChain) {
+        if(MatchHasChain) {
           if(!IncrementedChain) {
             P->ChainCounter++;
             IncrementedChain = 1;
             P->Score += PointsForChainPart(P->ChainCounter);
           }
-          // was originally using MaxChain>>8 here but that's not accurate to the original game
-          // which I think can only handle one chain at a time
+          // original game seems to only be able to handle one chain going on at once, see this TAS:
           // see https://www.youtube.com/watch?v=2GwvWqrhp4o
           IsChainActive = 1;
-//          SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Chain (maxchain) %i", MaxChain>>8);
           SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Chain %i", P->ChainCounter);
         }
 
@@ -257,6 +255,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
       }
     }
 
+  // If there are no chains active then reset the counter
   if(P->ChainResetTimer) {
     P->ChainResetTimer--;
     if(!P->ChainResetTimer) {
@@ -270,14 +269,8 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
     P->ChainResetTimer = 2;
 
   // create match structs for the matches that are found, and do related tasks
-  int ComboSize = 0, ComboChainSize = 0;
-  // look for chains first
-  for(int y=0; y<P->Height-1; y++)
-    for(int x=0; x<P->Width; x++) {
-      int Chain = GetTile(P, x, y)&PF_CHAIN;
-      if(Chain > ComboChainSize)
-        ComboChainSize = Chain;
-    }
+  int ComboSize = 0;
+
   // now actually go make those structs
   int MatchULX = -1, MatchULY = -1;
   for(int y=0; y<P->Height-1; y++)
@@ -309,7 +302,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
         Match->Child = NULL;
         Match->Next = NULL;
         Match->Timer1 = 0;
-        Match->Chain = ComboChainSize;
+        Match->Chain = IncrementedChain;
         if(!FirstMatch)
           Match->Timer2 = 26;
         else
@@ -334,11 +327,11 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
   if(ComboSize) {
     P->Score += BasePointsForCombo(ComboSize);
     // chain bonus
-    if(MaxActiveChain)
-      P->Score += PointsForChainPart(MaxActiveChain-1);
+    if(P->ChainCounter)
+      P->Score += PointsForChainPart(P->ChainCounter-1);
 
     // play sound effects and make visual effects
-    if(ComboSize >= 4 || (ComboSize == 3 && ComboChainSize)) {
+    if(ComboSize >= 4 || (ComboSize == 3 && IncrementedChain)) {
 #ifdef ENABLE_AUDIO
       Mix_PlayChannel(-1, SampleCombo, 0);
 #endif
