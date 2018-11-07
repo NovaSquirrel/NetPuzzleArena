@@ -53,6 +53,9 @@ void physics(struct Playfield *P) {
 
     struct CT_state *C = (struct CT_state*)P->Extra;
 
+    // Falling
+    int PlayDropSound = 0;
+
     for (int i = P->Height-2; i >= 0; i--) {
         for (int j = 0; j < P->Width; j++) {
             if (Extra(j,i)->fall < 0) {
@@ -70,16 +73,22 @@ void physics(struct Playfield *P) {
                     //landing on a hovering panel
                     else if (i < P->Height-1 && Extra(j, i+1)->hover > 0) {
                         Extra(j,i)->hover = Extra(j,i+1)->hover;
+                        PlayDropSound = 1;
                     }
                     //landing properly
                     else {
                         Extra(j,i)->fall = -3;
                         C->check_matches = 1;
+                        PlayDropSound = 1;
                     }
                 }
             }
         }
     }
+#ifdef ENABLE_AUDIO
+    if(PlayDropSound)
+      Mix_PlayChannel(-1, SampleDrop, 0);
+#endif
 
     //Moving
     if(P->KeyNew[KEY_LEFT])
