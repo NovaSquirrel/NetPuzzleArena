@@ -42,31 +42,62 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
 #endif
 
   // Draw tiles
-  for(int x=0; x<P->Width; x++)
-    for(int y=0; y<P->Height-1; y++) {
-      int Tile = P->Playfield[P->Width * y + x]&PF_COLOR;
-      if(!Tile)
-        continue;
-      blit(TileSheet, ScreenRenderer, TILE_W*Tile, 0, DrawX+x*TILE_W, DrawY+y*TILE_H-Rise, TILE_W, TILE_H);
+  if(!P->PanelExtra) { // original style, use MatchRow structs
+    for(int x=0; x<P->Width; x++)
+      for(int y=0; y<P->Height-1; y++) {
+        int Tile = P->Playfield[P->Width * y + x]&PF_COLOR;
+        if(!Tile)
+          continue;
+        blit(TileSheet, ScreenRenderer, TILE_W*Tile, 0, DrawX+x*TILE_W, DrawY+y*TILE_H-Rise, TILE_W, TILE_H);
 #ifdef DISPLAY_CHAIN_COUNT
-      DrawText(GameFont, DrawX+x*TILE_W, DrawY+y*TILE_H-Rise, 0, "%i", (P->Playfield[P->Width * y + x]&PF_CHAIN)>>8);
+        DrawText(GameFont, DrawX+x*TILE_W, DrawY+y*TILE_H-Rise, 0, "%i", (P->Playfield[P->Width * y + x]&PF_CHAIN)>>8);
 #endif
+      }
+    // draw the bottom row
+    for(int x=0; x<P->Width; x++) {
+      int Tile = P->Playfield[P->Width * (P->Height-1) + x]&PF_COLOR;
+      blit(TileSheet, ScreenRenderer, TILE_W*Tile, TILE_H*2, DrawX+x*TILE_W, DrawY+(P->Height-1)*TILE_H-Rise, TILE_W, TILE_H);
     }
-  // draw the bottom row
-  for(int x=0; x<P->Width; x++) {
-    int Tile = P->Playfield[P->Width * (P->Height-1) + x]&PF_COLOR;
-    blit(TileSheet, ScreenRenderer, TILE_W*Tile, TILE_H*2, DrawX+x*TILE_W, DrawY+(P->Height-1)*TILE_H-Rise, TILE_W, TILE_H);
-  }
 
-  // Draw exploding blocks
-  for(struct MatchRow *Heads = P->Match; Heads; Heads=Heads->Next) {
-    int SourceY = Heads->Timer1?TILE_H:TILE_H*2;
-    for(struct MatchRow *Match = Heads; Match; Match=Match->Child) {
+    // Draw exploding blocks
+    for(struct MatchRow *Heads = P->Match; Heads; Heads=Heads->Next) {
+      int SourceY = Heads->Timer1?TILE_H:TILE_H*2;
+      for(struct MatchRow *Match = Heads; Match; Match=Match->Child) {
 #ifdef DISPLAY_CHAIN_COUNT
-      DrawText(GameFont, DrawX+Match->X*TILE_W, DrawY+Match->Y*TILE_H-Rise, 0, "!%i", Match->Chain);
+        DrawText(GameFont, DrawX+Match->X*TILE_W, DrawY+Match->Y*TILE_H-Rise, 0, "!%i", Match->Chain);
 #endif
-      for(int i=0; i<Match->DisplayWidth; i++)
-        blit(TileSheet, ScreenRenderer, TILE_W*Match->Color, SourceY, DrawX+(Match->DisplayX+i)*TILE_W, DrawY+Match->Y*TILE_H-Rise, TILE_W, TILE_H);
+        for(int i=0; i<Match->DisplayWidth; i++)
+          blit(TileSheet, ScreenRenderer, TILE_W*Match->Color, SourceY, DrawX+(Match->DisplayX+i)*TILE_W, DrawY+Match->Y*TILE_H-Rise, TILE_W, TILE_H);
+      }
+    }
+    // Draw swapping tiles
+    if(P->SwapTimer) {
+      int Offset = (4-P->SwapTimer)*4*ScaleFactor;
+      blit(TileSheet, ScreenRenderer, TILE_W*P->SwapColor1, 0, DrawX+P->SwapX*TILE_W+Offset, DrawY+P->SwapY*TILE_H-Rise, TILE_W, TILE_H);
+      blit(TileSheet, ScreenRenderer, TILE_W*P->SwapColor2, 0, DrawX+(P->SwapX+1)*TILE_W-Offset, DrawY+P->SwapY*TILE_H-Rise, TILE_W, TILE_H);
+    }
+  } else { // extended tile information, ignore MatchRow structs
+    // draw the main playfield
+    for(int x=0; x<P->Width; x++)
+      for(int y=0; y<P->Height-1; y++) {
+        int Tile = P->Playfield[P->Width * y + x]&PF_COLOR;
+        struct panel_extra *Extra = &P->PanelExtra[P->Width * y + x];
+        int YState = 0;
+        if(!Tile)
+          continue;
+        if(Extra->flash)
+          YState = 1;
+        else if(Extra->burst)
+          YState = 2;
+        else if(Extra->matched)
+          continue;
+        blit(TileSheet, ScreenRenderer, TILE_W*Tile, TILE_H*YState, DrawX+x*TILE_W+Extra->swap*ScaleFactor, DrawY+y*TILE_H-Rise, TILE_W, TILE_H);
+      }
+
+    // draw the bottom row
+    for(int x=0; x<P->Width; x++) {
+      int Tile = P->Playfield[P->Width * (P->Height-1) + x]&PF_COLOR;
+      blit(TileSheet, ScreenRenderer, TILE_W*Tile, TILE_H*2, DrawX+x*TILE_W, DrawY+(P->Height-1)*TILE_H-Rise, TILE_W, TILE_H);
     }
   }
 
@@ -105,13 +136,6 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
         for(int j=0; j<Slab->Height; j++)
           blit(TileSheet, ScreenRenderer, TILE_W*10, TILE_H*1, DrawX+(Slab->X+i)*TILE_W,   DrawY+(Slab->Y+j)*TILE_H-Rise, TILE_W, TILE_H);
     }
-  }
-
-  // Draw swapping tiles
-  if(P->SwapTimer) {
-    int Offset = (4-P->SwapTimer)*4*ScaleFactor;
-    blit(TileSheet, ScreenRenderer, TILE_W*P->SwapColor1, 0, DrawX+P->SwapX*TILE_W+Offset, DrawY+P->SwapY*TILE_H-Rise, TILE_W, TILE_H);
-    blit(TileSheet, ScreenRenderer, TILE_W*P->SwapColor2, 0, DrawX+(P->SwapX+1)*TILE_W-Offset, DrawY+P->SwapY*TILE_H-Rise, TILE_W, TILE_H);
   }
 
   // Draw the cursor

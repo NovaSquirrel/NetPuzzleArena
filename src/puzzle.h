@@ -182,6 +182,17 @@ struct JoypadMapping {
 #define ACTIVE_JOY_MAX 7
 extern struct JoypadMapping ActiveJoysticks[ACTIVE_JOY_MAX];
 
+struct panel_extra {
+    // no "colour" attribute as that's P->Playfield
+    int fall;
+    int hover;
+    int swap;    // currently being swapped if nonzero
+    int matched;
+    int burst;   // timer for actually clearing out tiles
+    int flash;   // timer for the flash before clearing out tiles
+    int chain;   // if nonzero, tile causes a chain if involved in a match
+};
+
 struct Playfield {
   int GameType;
   int Width, Height;
@@ -200,6 +211,7 @@ struct Playfield {
 
   // Extra per-game data
   void *Extra;
+  struct panel_extra *PanelExtra;
 
   // Frenzy
   int Rise;

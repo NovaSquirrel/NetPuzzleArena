@@ -13,26 +13,13 @@
 #define MATCH_LEAN 61
 #define SWAP_LEAN 3
 
-struct panel_extra {
-    // no "colour" attribute as that's P->Playfield
-    int fall;
-    int hover;
-    int swap;
-    int matched;
-    int burst;
-    int flash;
-    int chain;
-};
-
 struct CT_state {
-    struct panel_extra *panel;
     int swap_x;
     int swap_y;
-    int chain;
     int check_matches;
 };
 
-#define Extra(X,Y) (&C->panel[P->Width * (Y) + (X)])
+#define Extra(X,Y) (&P->PanelExtra[P->Width * (Y) + (X)])
 
 void physics();
 void panel_swap (struct Playfield*, struct CT_state *C, int, int, int, int);
@@ -41,6 +28,11 @@ int is_cleared();
 void endofswap(struct Playfield*, struct CT_state *C);
 
 void physics(struct Playfield *P) {
+    if(P->KeyNew[KEY_PAUSE])
+      P->Paused ^= 1;
+    if(P->Paused)
+      return;
+
     struct CT_state *C = (struct CT_state*)P->Extra;
 
     for (int i = P->Height-2; i >= 0; i--) {
@@ -121,6 +113,9 @@ void physics(struct Playfield *P) {
 
         //Initiate the swap.
         else {
+#ifdef ENABLE_AUDIO
+            Mix_PlayChannel(-1, SampleSwap, 0);
+#endif
             C->swap_x = P->CursorX;
             C->swap_y = P->CursorY;
             // Immediately move the tiles over
@@ -132,22 +127,6 @@ void physics(struct Playfield *P) {
               Extra(C->swap_x+1, C->swap_y)->swap = -12;
         }
     }
-
-/*
-    //Match Checking
-    //animating currently active cards
-    for (int i=0; i<=11; i++) {
-        for (int j=0; j<=5; j++) {
-            if (card[j][i] != 0) {
-                if (card_offset[j][i] > 8) { card[j][i] = 0; card_offset[j][i] = 0; }
-                else if (card_offset[j][i] >= 7) card_offset[j][i] += 0.0625;
-                else if (card_offset[j][i] >= 6) card_offset[j][i] += 0.125;
-                else if (card_offset[j][i] >= 4) card_offset[j][i] += 0.25;
-                else if (card_offset[j][i] >= 0) card_offset[j][i] += 0.5;
-                }
-            }
-        }
-*/
 
     if (C->check_matches == 1) {
         C->check_matches = 0;
@@ -302,28 +281,36 @@ void physics(struct Playfield *P) {
             }
         }
 
-        /*
         //giving out cards for the match
         int placed = 0;
         for (int i=0; i < P->Height-1; i++) {
-            for (int j=0; j < P->Width; j++)
-                if (match_buffer[j][i] == 1) {
-                    card[j][i] = combo;
-                    if (is_chain) {
-                        chain++;
-                        card[j][i] = -chain;
+            for (int j=0; j < P->Width; j++) {
+                if (match_buffer[j][i] == 1 && (is_chain || combo > 3)) {
+#ifdef ENABLE_AUDIO
+                    Mix_PlayChannel(-1, SampleCombo, 0);
+#endif
+                    struct ComboNumber *Num = (struct ComboNumber*)malloc(sizeof(struct ComboNumber));
+                    Num->X = j*TILE_W + TILE_W/2;
+                    Num->Y = i*TILE_H + TILE_H/2;
+                    if(is_chain) {
+                        P->ChainCounter++;
+                        Num->Number = P->ChainCounter+1;
+                        Num->Flags = TEXT_CHAIN|TEXT_CENTERED;
+                    } else {
+                        Num->Number = combo;
+                        Num->Flags = TEXT_CENTERED;
                     }
-                    if (combo > 3 && is_chain) {
-                        card[j][i] = combo;
-                        card[j][i+1] = -chain;
-                    }
+                    Num->Timer = 30;
+                    Num->Next = P->ComboNumbers;
+                    Num->Speed = 0;
+                    P->ComboNumbers = Num;
                     placed = 1;
                     break;
                 }
+            }
             if (placed)
                 break;
         }
-        */
     }
 
     //Chain Flag Maintenance
@@ -350,13 +337,21 @@ void physics(struct Playfield *P) {
             }
         }
     if (fanfare == 1)
-        C->chain = 1;
+        P->ChainCounter = 0;
     
     //Clearing
     for (int i=0; i < P->Height-1; i++) {
         for (int j=0; j < P->Width; j++) {
-            if (Extra(j,i)->flash > 0) Extra(j,i)->flash--;
-            if (Extra(j,i)->burst > 0) Extra(j,i)->burst--;
+            if (Extra(j,i)->flash > 0)
+              Extra(j,i)->flash--;
+            if (Extra(j,i)->burst > 0) {
+              Extra(j,i)->burst--;
+              if(Extra(j,i)->burst == 0) {
+#ifdef ENABLE_AUDIO
+                Mix_PlayChannel(-1, SampleDisappear, 0);
+#endif
+              }
+            }
             if (Extra(j,i)->matched > 0) {
                 Extra(j,i)->matched--;
                 if (Extra(j,i)->matched == 0) {
@@ -385,6 +380,75 @@ void physics(struct Playfield *P) {
             }
         }
     }
+
+/////////////////// RISING ///////////////////
+  // Handle rising
+  if(!P->LiftKeyOn && !P->RiseStopTimer && (!P->Match || P->Flags&LIFT_WHILE_CLEARING) && P->KeyDown[KEY_LIFT]) {
+    if(P->Flags & INSTANT_LIFT) {
+      if(P->KeyNew[KEY_LIFT]) {
+        P->Rise = 16;
+        P->Score++;
+      }
+    } else {
+      P->Score++;
+      P->LiftKeyOn = 1;
+      P->RiseStopTimer = 10;
+    }
+  }
+
+  if(P->LiftKeyOn)
+    P->Rise++;
+  else if(P->RiseStopTimer)
+    P->RiseStopTimer--;
+  else if(!P->Match /*&& P->ChainCounter*/ && !(retraces & 15)) {
+    int NoMatches = 1;
+    for (int i=0; i < P->Height-1; i++) {
+      for (int j=0; j < P->Width; j++) {
+        if(Extra(j,i)->matched) {
+          NoMatches = 0;
+          break;
+        }
+      }
+    }
+    if(NoMatches)
+      P->Rise++;
+  }
+  if(P->Rise >= 16) {
+    P->LiftKeyOn = 0;
+
+    // push playfield up
+    for(int y=0; y<P->Height-1; y++)
+      for(int x=0; x<P->Width; x++) {
+        SetTile(P, x, y, GetTile(P, x, y+1));
+        P->PanelExtra[P->Width*y + x] = P->PanelExtra[P->Width*(y+1) + x];
+      }
+    memset(&P->PanelExtra[P->Width*(P->Height-1)], 0, sizeof(struct panel_extra)*P->Width);
+
+    P->CursorY--;
+    P->Rise = 0;
+    P->SwapY--;
+
+    // generate new blocks
+    RandomizeRow(P, P->Height-1);
+    // also update falling data
+    for(struct FallingChunk *Fall = P->FallingData; Fall; Fall = Fall->Next)
+      Fall->Y--;
+
+    // move garbage slabs up
+    for(struct GarbageSlab *Slab = P->GarbageSlabs; Slab; Slab=Slab->Next)
+      Slab->Y--;
+
+    for(struct ComboNumber *Num = P->ComboNumbers; Num; Num=Num->Next)
+      Num->Y -= TILE_H;
+
+    // move exploding blocks up
+    for(struct MatchRow *Heads = P->Match; Heads; Heads=Heads->Next)
+      for(struct MatchRow *Match = Heads; Match; Match=Match->Child)
+        Match->Y--;
+  }
+
+  if(!P->CursorY)
+   P->CursorY = 1;
 }
 
 void panel_swap(struct Playfield *P, struct CT_state *C, int srcx,int srcy, int dstx, int dsty) {
@@ -439,24 +503,23 @@ void endofswap(struct Playfield* P, struct CT_state *C) {
 }
 
 void InitPuzzleFrenzyCT(struct Playfield *P) {
-  for(int j=P->Height-10; j<P->Height; j++)
+  for(int j=P->Height-5; j<P->Height; j++)
     RandomizeRow(P, j);
 
   // Allocate extra state data
   P->Extra = calloc(1, sizeof(struct CT_state));
-  struct CT_state *C = (struct CT_state*)P->Extra;
-  C->chain = 1;
+  // struct CT_state *C = (struct CT_state*)P->Extra;
 
   // Allocate the extra panel data
-  C->panel = calloc(P->Width * P->Height, sizeof(struct panel_extra));
+  P->PanelExtra = calloc(P->Width * P->Height, sizeof(struct panel_extra));
 }
 
 void FreePuzzleFrenzyCT(struct Playfield *P) {
   // Free extra state information allocated
-  struct CT_state *C = (struct CT_state*)P->Extra;
-  if(C->panel) {
-    free(C->panel);
-    C->panel = NULL;
+  // struct CT_state *C = (struct CT_state*)P->Extra;
+  if(P->PanelExtra) {
+    free(P->PanelExtra);
+    P->PanelExtra = NULL;
   }
 
   if(P->Extra) {
