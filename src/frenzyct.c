@@ -459,10 +459,7 @@ void physics(struct Playfield *P) {
     for(struct ComboNumber *Num = P->ComboNumbers; Num; Num=Num->Next)
       Num->Y -= TILE_H;
 
-    // move exploding blocks up
-    for(struct MatchRow *Heads = P->Match; Heads; Heads=Heads->Next)
-      for(struct MatchRow *Match = Heads; Match; Match=Match->Child)
-        Match->Y--;
+    C->check_matches = 1;
   }
 
   if(!P->CursorY)
