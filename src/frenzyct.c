@@ -163,8 +163,8 @@ void physics(struct Playfield *P) {
         memset(match_buffer, 0, sizeof(match_buffer));
             
         //Horizontal Matches
-        for (int i=0; i<=11; i++) {
-            for (int j=0; j<=3; j++) {
+        for (int i=0; i < P->Height; i++) {
+            for (int j=0; j <= (P->Width - P->MinMatchSize); j++) {
                 //no voids allowed
                 if (!GetColor(P, j+2, i)) {
                   j += 2; continue;
@@ -227,7 +227,7 @@ void physics(struct Playfield *P) {
 
         //Vertical Matches
         for (int j=0; j < P->Width; j++) {
-            for (int i=0; i<=9; i++) {
+            for (int i=0; i < (P->Height - P->MinMatchSize); i++) {
 
                 //no voids allowed
                 if (!GetColor(P, j, i+2)) {
