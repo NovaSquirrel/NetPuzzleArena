@@ -219,7 +219,7 @@ int main(int argc, char *argv[]) {
 
   ChatFont = TTF_OpenFont("data/font.ttf", 8*ScaleFactor);
 #ifdef ENABLE_AUDIO
-  if( (Mix_Init(MIX_INIT_MODPLUG) & MIX_INIT_MODPLUG) != MIX_INIT_MODPLUG ) {
+  if( (Mix_Init(MIX_INIT_MOD) & MIX_INIT_MOD) != MIX_INIT_MOD ) {
     SDL_MessageBox(SDL_MESSAGEBOX_ERROR, "Error", NULL, "SDL_mixer could not initialize! SDL_mixer Error: %s", Mix_GetError());
   }
   if(Mix_OpenAudio(22050, MIX_DEFAULT_FORMAT, 2, 1024)==-1) {
