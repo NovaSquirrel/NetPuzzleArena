@@ -1,7 +1,7 @@
 /*
  * Net Puzzle Arena
  *
- * Copyright (C) 2016 NovaSquirrel
+ * Copyright (C) 2016, 2020 NovaSquirrel
  *
  * This program is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -10,11 +10,11 @@
  *
  * This program is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the GNU
  * General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.	If not, see <http://www.gnu.org/licenses/>.
  */
 #ifndef PUZZLE_HEADER
 #define PUZZLE_HEADER
@@ -26,6 +26,8 @@
 //#define ENABLE_MUSIC 1
 //#define DISPLAY_CHAIN_COUNT 1
 #define MAX_MODIFIERS 15
+#define PLAYFIELD_MAX_WIDTH 20
+#define PLAYFIELD_MAX_HEIGHT 20
 
 #include <stdio.h>
 #include <string.h>
@@ -72,185 +74,185 @@ extern Mix_Chunk *SampleSwap, *SampleDrop, *SampleDisappear, *SampleMove, *Sampl
 #endif
 
 enum GameTypes {
-  FRENZY,
-  FRENZY_CT,
-  AVALANCHE,
-  PILLARS,
-  DICE_MATCH,
-  REVERSI_BALL,
-  COOKIE,
-  STACKER,
+	FRENZY,
+	AVALANCHE,
+	PILLARS,
+	DICE_MATCH,
+	REVERSI_BALL,
+	COOKIE,
+	STACKER,
 };
 
 enum Directions {
-  EAST,
-  SOUTHEAST,
-  SOUTH,
-  SOUTHWEST,
-  WEST,
-  NORTHWEST,
-  NORTH,
-  NORTHEAST
+	EAST,
+	SOUTHEAST,
+	SOUTH,
+	SOUTHWEST,
+	WEST,
+	NORTHWEST,
+	NORTH,
+	NORTHEAST
 };
 
 enum GameKey {
-  KEY_LEFT,
-  KEY_DOWN,
-  KEY_UP,
-  KEY_RIGHT,
-  KEY_OK,
-  KEY_BACK,
-  KEY_PAUSE,
-  KEY_ACTION,
-  KEY_ITEM,
-  KEY_ROTATE_L, // counter clockwise, also swap
-  KEY_ROTATE_R, // clockwise, also swap
-  KEY_LIFT,
-  KEY_COUNT,
-  KEY_SWAP = KEY_ROTATE_L
+	KEY_LEFT,
+	KEY_DOWN,
+	KEY_UP,
+	KEY_RIGHT,
+	KEY_OK,
+	KEY_BACK,
+	KEY_PAUSE,
+	KEY_ACTION,
+	KEY_ITEM,
+	KEY_ROTATE_L, // counter clockwise, also swap
+	KEY_ROTATE_R, // clockwise, also swap
+	KEY_LIFT,
+	KEY_COUNT,
+	KEY_SWAP = KEY_ROTATE_L
 };
 
 enum BlockColor {
-  BLOCK_EMPTY,
-  BLOCK_RED,
-  BLOCK_GREEN,
-  BLOCK_YELLOW,
-  BLOCK_CYAN,
-  BLOCK_PURPLE,
-  BLOCK_BLUE,
-  BLOCK_EXTRA1,
-  BLOCK_EXTRA2,
-  BLOCK_METAL,
-  BLOCK_GARBAGE,
-  BLOCK_GRAY,
-  BLOCK_DISABLED
+	BLOCK_EMPTY,
+	BLOCK_RED,
+	BLOCK_GREEN,
+	BLOCK_YELLOW,
+	BLOCK_CYAN,
+	BLOCK_PURPLE,
+	BLOCK_BLUE,
+	BLOCK_EXTRA1,
+	BLOCK_EXTRA2,
+	BLOCK_METAL,
+	BLOCK_GARBAGE,
+	BLOCK_GRAY,
+	BLOCK_DISABLED
 };
 
 enum GameplayOptions {
-  SWAP_INSTANTLY = 1,
-  LIFT_WHILE_CLEARING = 2,
-  PULL_BLOCK_HORIZONTAL = 4,
-  MOUSE_CONTROL = 8,
-  NO_AUTO_REPEAT = 16,
-  INSTANT_LIFT = 32,
-  STYLUS_CONTROL = 64
+	SWAP_INSTANTLY = 1,
+	LIFT_WHILE_CLEARING = 2,
+	PULL_BLOCK_HORIZONTAL = 4,
+	MOUSE_CONTROL = 8,
+	NO_AUTO_REPEAT = 16,
+	INSTANT_LIFT = 32,
+	STYLUS_CONTROL = 64
 };
 
 struct FallingChunk {
-  int Timer, X, Y, Height;
-  struct FallingChunk *Next;
+	int Timer, X, Y, Height;
+	struct FallingChunk *Next;
 };
 
 struct GarbageSlab {
-  int X, Y, Width, Height;
-  int Clearing;
-  int Timer1;       // timer for how long until blocks disappear
-  int Timer2;       // timer for making individual blocks disappear
-  int DisplayWidth; // width to display
-  struct GarbageSlab *Next;
+	int X, Y, Width, Height;
+	int Clearing;
+	int Timer1;			 // timer for how long until blocks disappear
+	int Timer2;			 // timer for making individual blocks disappear
+	int DisplayWidth; // width to display
+	struct GarbageSlab *Next;
 };
 
 struct ComboNumber {
-  int X, Y, Number, Flags, Timer;
-  int Speed;
-  struct ComboNumber *Next;
+	int X, Y, Number, Flags, Timer;
+	int Speed;
+	struct ComboNumber *Next;
 };
 
 struct MatchRow {
-  int Color; // color of the row
-  int X, Y;  // position in the playfield of the row
-  int Width; // how many blocks are in the row
-  int Timer1; // timer for how long until blocks disappear
-  int Timer2; // timer for making individual blocks disappear
-  int DisplayX;     // \ used to make blocks gradually disappear
-  int DisplayWidth; // /
-  int Chain; // chain count
-  struct MatchRow *Child, *Next;
+	int Color; // color of the row
+	int X, Y;	// position in the playfield of the row
+	int Width; // how many blocks are in the row
+	int Timer1; // timer for how long until blocks disappear
+	int Timer2; // timer for making individual blocks disappear
+	int DisplayX;		 // \ used to make blocks gradually disappear
+	int DisplayWidth; // /
+	int Chain; // chain count
+	struct MatchRow *Child, *Next;
 };
 
 struct JoypadKey {
-  char Type; // [k]eyboard, [b]utton, [a]xe, [h]at
-  int Which; // which keyboard key, button, axe, or hat?
-  int Value; // SDL_HAT_UP and such, or 1 or -1
+	char Type; // [k]eyboard, [b]utton, [a]xe, [h]at
+	int Which; // which keyboard key, button, axe, or hat?
+	int Value; // SDL_HAT_UP and such, or 1 or -1
 };
 
 struct JoypadMapping {
-  int Active;
-  SDL_Joystick *Joy;
-  struct JoypadKey Keys[KEY_COUNT][2];
+	int Active;
+	SDL_Joystick *Joy;
+	struct JoypadKey Keys[KEY_COUNT][2];
 };
 #define ACTIVE_JOY_MAX 7
 extern struct JoypadMapping ActiveJoysticks[ACTIVE_JOY_MAX];
 
 struct panel_extra {
-    // no "colour" attribute as that's P->Playfield
-    int fall;
-    int hover;
-    int swap;    // currently being swapped if nonzero
-    int matched;
-    int burst;   // timer for actually clearing out tiles
-    int flash;   // timer for the flash before clearing out tiles
-    int chain;   // if nonzero, tile causes a chain if involved in a match
+	int fall;
+	int hover;   // timer for until the tile falls
+	int swap;    // currently being swapped if nonzero
+	int matched;
+	int burst;   // timer for actually clearing out tiles
+	int flash;   // timer for the flash before clearing out tiles
+	int chain;   // if nonzero, tile causes a chain if involved in a match
 };
 
 struct Playfield {
-  int GameType;
-  int Width, Height;
-  int CursorX, CursorY;
-  int Paused;
-  uint32_t Flags;
-  int KeyDown[KEY_COUNT];
-  int KeyLast[KEY_COUNT];
-  int KeyNew[KEY_COUNT];
-  int KeyRepeat[KEY_COUNT];
-  int *Playfield;
-  int ChainCounter;
-  int ChainResetTimer;
-  uint32_t Score;
-  int MouseX, MouseY;
+	int GameType;
+	int Width, Height;
+	int CursorX, CursorY;
+	int Paused;
+	uint32_t Flags;
+	int KeyDown[KEY_COUNT];
+	int KeyLast[KEY_COUNT];
+	int KeyNew[KEY_COUNT];
+	int KeyRepeat[KEY_COUNT];
 
-  // Extra per-game data
-  void *Extra;
-  struct panel_extra *PanelExtra;
+	int playfield[PLAYFIELD_MAX_WIDTH][PLAYFIELD_MAX_HEIGHT];
+	struct panel_extra panel_extra[PLAYFIELD_MAX_WIDTH][PLAYFIELD_MAX_HEIGHT];
 
-  // Frenzy
-  int Rise;
-  int LiftKeyOn, RiseStopTimer;
-  int SwapTimer, SwapColor1, SwapColor2;
-  struct MatchRow *Match;
-  struct FallingChunk *FallingData;
-  struct ComboNumber *ComboNumbers;
-  struct GarbageSlab *GarbageSlabs;
-  int SwapX, SwapY;
+	int ChainCounter;
+	int ChainResetTimer;
+	uint32_t Score;
+	int MouseX, MouseY;
 
-  // Falling blocks
-  int FallTimer;
-  int LockTimer;
-  int Active;
-  int Direction; // for Avalanche
-  int SwapColor3; // for pillars
-  int PieceCount; // number of pieces the player has placed so far
+	// Extra per-game data
+	void *Extra;
 
-  // Game rules
-  int MinMatchSize; // how many matching tiles are needed
-  int ColorCount;
-  int Difficulty; // easy, normal, difficult
-  int GameSpeed; // rising speed and falling speed
-  int Modifiers[MAX_MODIFIERS][2]; // 0 is type, 1 is value
+	// Frenzy
+	int Rise;
+	int LiftKeyOn, RiseStopTimer;
+	int SwapTimer, SwapColor1, SwapColor2;
+	struct MatchRow *Match;
+	struct FallingChunk *FallingData;
+	struct ComboNumber *ComboNumbers;
+	struct GarbageSlab *GarbageSlabs;
+	int SwapX, SwapY;
 
-  int Joystick;
+	// Falling blocks
+	int FallTimer;
+	int LockTimer;
+	int Active;
+	int Direction; // for Avalanche
+	int SwapColor3; // for pillars
+	int PieceCount; // number of pieces the player has placed so far
+
+	// Game rules
+	int MinMatchSize; // how many matching tiles are needed
+	int ColorCount;
+	int Difficulty; // easy, normal, difficult
+	int GameSpeed; // rising speed and falling speed
+	int Modifiers[MAX_MODIFIERS][2]; // 0 is type, 1 is value
+
+	int Joystick;
 };
 
 // different parts of the playfield int
-#define PF_COLOR        0x000ff
-#define PF_CHAIN        0x00100
-#define PF_JUST_LANDED  0x00200
+#define PF_COLOR				0x000ff
+#define PF_CHAIN				0x00100
+#define PF_JUST_LANDED	0x00200
 enum TextDrawFlags {
-  TEXT_CENTERED = 1,
-  TEXT_WHITE = 2,
-  TEXT_WRAPPED = 4,
-  TEXT_FROM_BOTTOM = 8,
-  TEXT_CHAIN = 16
+	TEXT_CENTERED = 1,
+	TEXT_WHITE = 2,
+	TEXT_WRAPPED = 4,
+	TEXT_FROM_BOTTOM = 8,
+	TEXT_CHAIN = 16
 };
 
 void INIConfigHandler(const char *Group, const char *Item, const char *Value);
@@ -278,7 +280,7 @@ void SetTile(struct Playfield *P, int X, int Y, int Value);
 void RandomizeRow(struct Playfield *P, int y);
 void LogMessage(const char *fmt, ...);
 
-int RandomTileColor(struct Playfield *P);
+int random_tile_color(struct Playfield *P);
 
 void TriggerGarbageClear(struct Playfield *P, int x, int y, int *IsGarbage);
 int CountConnected(struct Playfield *P, int X, int Y, int *Used);
@@ -296,39 +298,39 @@ void GetConfigPath();
 void RemoveLineEndings(char *buffer);
 
 // PCG random
-void RandomSeed();
-uint32_t Random(uint32_t Bound);
-uint32_t RandomRaw();
-uint32_t RandomMinMax(uint32_t Min, uint32_t Max);
+void random_seed();
+uint32_t random(uint32_t bound);
+uint32_t random_raw();
+uint32_t random_min_max(uint32_t min, uint32_t max);
 
 struct GameModifier {
-  const char *Name;
-  const char *Description;
-  int Flags;
-  int Min;
-  int Max;
-  const char **Names;
+	const char *Name;
+	const char *Description;
+	int Flags;
+	int Min;
+	int Max;
+	const char **Names;
 };
 
 enum ModifierFlags {
-  MOD_REQUIRED,
-  MOD_FRENZY
+	MOD_REQUIRED,
+	MOD_FRENZY
 };
 
 enum ModifierIDs {
-  MOD_NULL,
-  MOD_GAME_TYPE,
-  MOD_GAME_DIFFICULTY,
-  MOD_GAME_SPEED,
-  MOD_EXPLODING_LIFT,
-  MOD_COLOR_COUNT,
-  MOD_MINIMUM_MATCH,
-  MOD_INSTANT_SWAP,
-  MOD_INSTANT_LIFT,
-  MOD_TOUCH_CONTROL,
-  MOD_MOUSE_CONTROL,
-  MOD_PLAYFIELD_WIDTH,
-  MOD_PLAYFIELD_HEIGHT,
+	MOD_NULL,
+	MOD_GAME_TYPE,
+	MOD_GAME_DIFFICULTY,
+	MOD_GAME_SPEED,
+	MOD_EXPLODING_LIFT,
+	MOD_COLOR_COUNT,
+	MOD_MINIMUM_MATCH,
+	MOD_INSTANT_SWAP,
+	MOD_INSTANT_LIFT,
+	MOD_TOUCH_CONTROL,
+	MOD_MOUSE_CONTROL,
+	MOD_PLAYFIELD_WIDTH,
+	MOD_PLAYFIELD_HEIGHT,
 };
 
 extern struct GameModifier ModifierList[];

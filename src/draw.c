@@ -1,7 +1,7 @@
 /*
  * Net Puzzle Arena
  *
- * Copyright (C) 2016 NovaSquirrel
+ * Copyright (C) 2016, 2020 NovaSquirrel
  *
  * This program is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -42,20 +42,20 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
 #endif
 
   // Draw tiles
-  if(!P->PanelExtra) { // original style, use MatchRow structs
+  if(1) { // original style, use MatchRow structs
     for(int x=0; x<P->Width; x++)
       for(int y=0; y<P->Height-1; y++) {
-        int Tile = P->Playfield[P->Width * y + x]&PF_COLOR;
+        int Tile = P->playfield[x][y]&PF_COLOR;
         if(!Tile)
           continue;
         blit(TileSheet, ScreenRenderer, TILE_W*Tile, 0, DrawX+x*TILE_W, DrawY+y*TILE_H-Rise, TILE_W, TILE_H);
 #ifdef DISPLAY_CHAIN_COUNT
-        DrawText(GameFont, DrawX+x*TILE_W, DrawY+y*TILE_H-Rise, 0, "%i", (P->Playfield[P->Width * y + x]&PF_CHAIN)>>8);
+        DrawText(GameFont, DrawX+x*TILE_W, DrawY+y*TILE_H-Rise, 0, "%i", (P->Playfield[x][y]&PF_CHAIN)>>8);
 #endif
       }
     // draw the bottom row
     for(int x=0; x<P->Width; x++) {
-      int Tile = P->Playfield[P->Width * (P->Height-1) + x]&PF_COLOR;
+      int Tile = P->playfield[x][P->Height-1]&PF_COLOR;
       blit(TileSheet, ScreenRenderer, TILE_W*Tile, TILE_H*2, DrawX+x*TILE_W, DrawY+(P->Height-1)*TILE_H-Rise, TILE_W, TILE_H);
     }
 
@@ -80,8 +80,8 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
     // draw the main playfield
     for(int x=0; x<P->Width; x++)
       for(int y=0; y<P->Height-1; y++) {
-        int Tile = P->Playfield[P->Width * y + x]&PF_COLOR;
-        struct panel_extra *Extra = &P->PanelExtra[P->Width * y + x];
+        int Tile = P->playfield[x][y]&PF_COLOR;
+        struct panel_extra *Extra = &P->panel_extra[x][y];
         int YState = 0;
         if(!Tile)
           continue;
@@ -96,7 +96,7 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
 
     // draw the bottom row
     for(int x=0; x<P->Width; x++) {
-      int Tile = P->Playfield[P->Width * (P->Height-1) + x]&PF_COLOR;
+      int Tile = P->playfield[x][P->Height-1]&PF_COLOR;
       blit(TileSheet, ScreenRenderer, TILE_W*Tile, TILE_H*2, DrawX+x*TILE_W, DrawY+(P->Height-1)*TILE_H-Rise, TILE_W, TILE_H);
     }
   }
@@ -139,7 +139,7 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
   }
 
   // Draw the cursor
-  if(P->GameType == FRENZY || P->GameType == FRENZY_CT) {
+  if(P->GameType == FRENZY) {
     blit(TileSheet, ScreenRenderer, 0, TILE_H, DrawX+P->CursorX*TILE_W, DrawY+P->CursorY*TILE_H-Rise, TILE_W, TILE_H);
     blit(TileSheet, ScreenRenderer, 0, TILE_H, DrawX+(P->CursorX+1)*TILE_W, DrawY+P->CursorY*TILE_H-Rise, TILE_W, TILE_H);
   } else if(P->GameType == AVALANCHE) {

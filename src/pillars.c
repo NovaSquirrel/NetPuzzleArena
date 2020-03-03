@@ -31,9 +31,9 @@ void UpdatePillars(struct Playfield *P) {
     if(ClearPillarsStyle(P, 1))
       return;
 
-    P->SwapColor1 = RandomTileColor(P);
-    P->SwapColor2 = RandomTileColor(P);
-    P->SwapColor3 = RandomTileColor(P);
+    P->SwapColor1 = random_tile_color(P);
+    P->SwapColor2 = random_tile_color(P);
+    P->SwapColor3 = random_tile_color(P);
     P->CursorX = P->Width/2;
     P->CursorY = 0;
     P->LockTimer = 0;

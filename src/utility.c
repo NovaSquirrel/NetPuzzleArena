@@ -84,32 +84,6 @@ void SDL_MessageBox(int Type, const char *Title, SDL_Window *Window, const char 
   va_end(argp);
 }
 
-/*
-int Random(int Choices) {
-  int Out, Mask;
-  if(Choices == 2)
-    return rand()&1;
-  else if(Choices <= 4)
-    Mask = 3;
-  else if(Choices <= 8)
-    Mask = 7;
-  else if(Choices <= 16)
-    Mask = 15;
-  else if(Choices <= 32)
-    Mask = 31;
-  else if(Choices <= 64)
-    Mask = 63;
-  else
-    return rand()%Choices;
-
-  while(1) {
-    Out = rand()&Mask;
-    if(Out < Choices)
-      return Out;
-  }
-}
-*/
-
 void GetConfigPath() {
   sprintf(TempString, "%sconfig.ini", PrefPath);
 }
