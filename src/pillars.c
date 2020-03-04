@@ -34,7 +34,7 @@ void UpdatePillars(struct Playfield *P) {
     P->SwapColor1 = random_tile_color(P);
     P->SwapColor2 = random_tile_color(P);
     P->SwapColor3 = random_tile_color(P);
-    P->CursorX = P->Width/2;
+    P->CursorX = P->width/2;
     P->CursorY = 0;
     P->LockTimer = 0;
   }
@@ -45,7 +45,7 @@ void UpdatePillars(struct Playfield *P) {
   }
 
   if(P->KeyNew[KEY_RIGHT]) {
-    P->CursorX += P->CursorX != P->Width-1 && !GetTile1(P, 1, 0) && !GetTile1(P, 1, 1) && !GetTile1(P, 1, 2);
+    P->CursorX += P->CursorX != P->width-1 && !GetTile1(P, 1, 0) && !GetTile1(P, 1, 1) && !GetTile1(P, 1, 2);
     P->LockTimer = 0;
   }
 
@@ -73,11 +73,11 @@ void UpdatePillars(struct Playfield *P) {
   }
 
   if(GoDown) {
-    if(!GetTile1(P, 0, 3) && P->CursorY != P->Height-4)
+    if(!GetTile1(P, 0, 3) && P->CursorY != P->height-4)
       P->CursorY++;
   }
 
-  if(P->CursorY >= (P->Height-4) || GetTile1(P, 0, 3)) {
+  if(P->CursorY >= (P->height-4) || GetTile1(P, 0, 3)) {
     P->LockTimer++;
     if(P->LockTimer > 16) {
       SetTile(P, P->CursorX, P->CursorY, P->SwapColor1);

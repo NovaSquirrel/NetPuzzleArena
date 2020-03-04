@@ -19,16 +19,16 @@
 #include "puzzle.h"
 
 void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
-  int VisualWidth = P->Width * TILE_W;
-  int VisualHeight = (P->Height-1) * TILE_H;
-  int Rise = P->Rise * (TILE_H / 16);
+  int VisualWidth = P->width * TILE_W;
+  int VisualHeight = (P->height-1) * TILE_H;
+  int Rise = P->y_scroll * (TILE_H / 16);
 
   // border
   SDL_SetRenderDrawColor(ScreenRenderer, 0, 0, 0, 255);
   SDL_Rect BorderRectangle = {DrawX-1, DrawY-1, VisualWidth + 2, VisualHeight + 2};
   SDL_RenderDrawRect(ScreenRenderer, &BorderRectangle);
 
-  SDL_Rect ClipRectangle = {DrawX, DrawY, P->Width * TILE_W, (P->Height-1) * TILE_H};
+  SDL_Rect ClipRectangle = {DrawX, DrawY, P->width * TILE_W, (P->height-1) * TILE_H};
   SDL_RenderSetClipRect(ScreenRenderer, &ClipRectangle);
 
 #ifdef FAST_MODE
@@ -43,8 +43,8 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
 
   // Draw tiles
   if(1) { // original style, use MatchRow structs
-    for(int x=0; x<P->Width; x++)
-      for(int y=0; y<P->Height-1; y++) {
+    for(int x=0; x<P->width; x++)
+      for(int y=0; y<P->height-1; y++) {
         int Tile = P->playfield[x][y]&PF_COLOR;
         if(!Tile)
           continue;
@@ -54,9 +54,9 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
 #endif
       }
     // draw the bottom row
-    for(int x=0; x<P->Width; x++) {
-      int Tile = P->playfield[x][P->Height-1]&PF_COLOR;
-      blit(TileSheet, ScreenRenderer, TILE_W*Tile, TILE_H*2, DrawX+x*TILE_W, DrawY+(P->Height-1)*TILE_H-Rise, TILE_W, TILE_H);
+    for(int x=0; x<P->width; x++) {
+      int Tile = P->playfield[x][P->height-1]&PF_COLOR;
+      blit(TileSheet, ScreenRenderer, TILE_W*Tile, TILE_H*2, DrawX+x*TILE_W, DrawY+(P->height-1)*TILE_H-Rise, TILE_W, TILE_H);
     }
 
     // Draw exploding blocks
@@ -77,9 +77,10 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
       blit(TileSheet, ScreenRenderer, TILE_W*P->SwapColor2, 0, DrawX+(P->SwapX+1)*TILE_W-Offset, DrawY+P->SwapY*TILE_H-Rise, TILE_W, TILE_H);
     }
   } else { // extended tile information, ignore MatchRow structs
+/*
     // draw the main playfield
-    for(int x=0; x<P->Width; x++)
-      for(int y=0; y<P->Height-1; y++) {
+    for(int x=0; x<P->width; x++)
+      for(int y=0; y<P->height-1; y++) {
         int Tile = P->playfield[x][y]&PF_COLOR;
         struct panel_extra *Extra = &P->panel_extra[x][y];
         int YState = 0;
@@ -93,12 +94,12 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
           continue;
         blit(TileSheet, ScreenRenderer, TILE_W*Tile, TILE_H*YState, DrawX+x*TILE_W+Extra->swap*ScaleFactor, DrawY+y*TILE_H-Rise, TILE_W, TILE_H);
       }
-
     // draw the bottom row
-    for(int x=0; x<P->Width; x++) {
-      int Tile = P->playfield[x][P->Height-1]&PF_COLOR;
-      blit(TileSheet, ScreenRenderer, TILE_W*Tile, TILE_H*2, DrawX+x*TILE_W, DrawY+(P->Height-1)*TILE_H-Rise, TILE_W, TILE_H);
+    for(int x=0; x<P->width; x++) {
+      int Tile = P->playfield[x][P->height-1]&PF_COLOR;
+      blit(TileSheet, ScreenRenderer, TILE_W*Tile, TILE_H*2, DrawX+x*TILE_W, DrawY+(P->height-1)*TILE_H-Rise, TILE_W, TILE_H);
     }
+*/
   }
 
   // Draw garbage slabs

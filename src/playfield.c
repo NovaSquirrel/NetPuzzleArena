@@ -53,19 +53,19 @@ int random_tile_color(struct Playfield *P) {
 }
 
 // Count the number of same-colored blocks that are touching each other in a group, from a starting point
-// "Used" is an int array that should be the size of P->Width*P->Height, and should be zero'd before the first CountConnected call
+// "Used" is an int array that should be the size of P->width*P->height, and should be zero'd before the first CountConnected call
 int CountConnected(struct Playfield *P, int X, int Y, int *Used) {
 	int Color = GetTile(P, X, Y);
 	int Sum = 1;
-	Used[P->Width * Y + X] = 1;
+	Used[P->width * Y + X] = 1;
 
-	if(X-1 >= 0 && !Used[P->Width * Y + (X-1)] && GetTile(P, X-1, Y) == Color)
+	if(X-1 >= 0 && !Used[P->width * Y + (X-1)] && GetTile(P, X-1, Y) == Color)
 		Sum += CountConnected(P, X-1, Y, Used);
-	if(X+1 <= P->Width-1 && !Used[P->Width * Y + (X+1)] && GetTile(P, X+1, Y) == Color) 
+	if(X+1 <= P->width-1 && !Used[P->width * Y + (X+1)] && GetTile(P, X+1, Y) == Color) 
 		Sum += CountConnected(P, X+1, Y, Used);
-	if(Y-1 >= 0 && !Used[P->Width * (Y-1) + X] && GetTile(P, X, Y-1) == Color) 
+	if(Y-1 >= 0 && !Used[P->width * (Y-1) + X] && GetTile(P, X, Y-1) == Color) 
 		Sum += CountConnected(P, X, Y-1, Used);
-	if(Y+1 <= P->Height-2 && !Used[P->Width * (Y+1) + X] && GetTile(P, X, Y+1) == Color)
+	if(Y+1 <= P->height-2 && !Used[P->width * (Y+1) + X] && GetTile(P, X, Y+1) == Color)
 		Sum += CountConnected(P, X, Y+1, Used);
 
 	return Sum;
@@ -102,19 +102,19 @@ void ClearConnected(struct Playfield *P, int X, int Y) {
 
 	if(X-1 >= 0 && GetTile(P, X-1, Y) == Color)
 		ClearConnected(P, X-1, Y);
-	if(X+1 <= P->Width-1 && GetTile(P, X+1, Y) == Color) 
+	if(X+1 <= P->width-1 && GetTile(P, X+1, Y) == Color) 
 		ClearConnected(P, X+1, Y);
 	if(Y-1 >= 0 && GetTile(P, X, Y-1) == Color) 
 		ClearConnected(P, X, Y-1);
-	if(Y+1 <= P->Height-2 && GetTile(P, X, Y+1) == Color)
+	if(Y+1 <= P->height-2 && GetTile(P, X, Y+1) == Color)
 		ClearConnected(P, X, Y+1);
 }
 
 // Look for any blocks that are above an empty tile and move them down
 int MakeBlocksFall(struct Playfield *P) {
 	int BlocksFell = 0;
-	for(int x=0; x<P->Width; x++)
-		for(int y=P->Height-2; y; y--)
+	for(int x=0; x<P->width; x++)
+		for(int y=P->height-2; y; y--)
 			if(!GetTile(P, x, y) && GetTile(P, x, y-1)) {
 				SetTile(P, x, y, GetTile(P, x, y-1));
 				SetTile(P, x, y-1, BLOCK_EMPTY);
@@ -125,8 +125,8 @@ int MakeBlocksFall(struct Playfield *P) {
 
 // Are there any tiles that can fall?
 int TestBlocksFall(struct Playfield *P) {
-	for(int x=0; x<P->Width; x++)
-		for(int y=P->Height-2; y; y--)
+	for(int x=0; x<P->width; x++)
+		for(int y=P->height-2; y; y--)
 			if(!GetTile(P, x, y) && GetTile(P, x, y-1)) {
 				return 1;
 			}
@@ -137,9 +137,9 @@ int TestBlocksFall(struct Playfield *P) {
 void TriggerGarbageClear(struct Playfield *P, int x, int y, int *IsGarbage) {
 	if(x < 0 || y < 0)
 		return;
-	if(x > P->Width || y > P->Height-1)
+	if(x > P->width || y > P->height-1)
 		return;
-	if(!IsGarbage[P->Width*y + x])
+	if(!IsGarbage[P->width*y + x])
 		return;
 	if(GetColor(P, x, y) == BLOCK_GARBAGE) {
 	// Is this just a single garbage tile? We can just clear it
@@ -233,14 +233,14 @@ int ClearAvalancheStyle(struct Playfield *P) {
 		return 1;
 
 	// make an array for CountConnected to use
-	int Used[P->Width * P->Height];
+	int Used[P->width * P->height];
 	memset(Used, 0, sizeof(Used));
 
 	int SoundPlayed = 0;
 
 	// look for groups and clear them
-	for(int y=0; y<P->Height; y++)
-		for(int x=0; x<P->Width; x++) {
+	for(int y=0; y<P->height; y++)
+		for(int x=0; x<P->width; x++) {
 			if(!GetTile(P, x, y))
 				continue;
 
@@ -275,7 +275,7 @@ int ClearPillarsStyle(struct Playfield *P, int Diagonals) {
 	if(P->Match || MakeBlocksFall(P)) // clearing and falling blocks everything else
 		return 1;
 
-	int Used[P->Width][P->Height];
+	int Used[P->width][P->height];
 	memset(Used, 0, sizeof(Used));
 
 	int SoundPlayed = 0;
@@ -284,8 +284,8 @@ int ClearPillarsStyle(struct Playfield *P, int Diagonals) {
 	CurMatch = NULL;
 
 	// Search for matches (lines of the same color)
-	for(int y=0; y<P->Height; y++) {
-		for(int x=0; x<P->Width; x++) {
+	for(int y=0; y<P->height; y++) {
+		for(int x=0; x<P->width; x++) {
 			for(int dir=EAST; dir<WEST; dir+=((Diagonals)?1:2)) {
 				 int Count = 0;
 				 int Color = GetColor(P, x, y);
@@ -295,7 +295,7 @@ int ClearPillarsStyle(struct Playfield *P, int Diagonals) {
 				 while(1) {
 					 int TestX = x + DirX[dir] * Count;
 					 int TestY = y + DirY[dir] * Count;
-					 if(TestX < 0 || TestY < 0 || TestX >= P->Width || TestY >= P->Height)
+					 if(TestX < 0 || TestY < 0 || TestX >= P->width || TestY >= P->height)
 						 break;
 					 if(GetColor(P, TestX, TestY) != Color)
 						 break;
@@ -322,8 +322,8 @@ int ClearPillarsStyle(struct Playfield *P, int Diagonals) {
 		}
 	}
 
-	for(int y=0; y<P->Height; y++) {
-		for(int x=0; x<P->Width; x++) {
+	for(int y=0; y<P->height; y++) {
+		for(int x=0; x<P->width; x++) {
 			if(Used[x][y])
 				SetTile(P, x, y, BLOCK_EMPTY);
 		}
@@ -349,26 +349,26 @@ void SetGameDefaults(struct Playfield *P, int Game) {
 		case FRENZY:
 			P->MinMatchSize = 3;
 			P->ColorCount = 5;
-			P->Width = 6;
-			P->Height = 13;
+			P->width = 6;
+			P->height = 13;
 			break;
 		case AVALANCHE:
 			P->MinMatchSize = 4;
 			P->ColorCount = 5;
-			P->Width = 6;
-			P->Height = 13;
+			P->width = 6;
+			P->height = 13;
 			break;
 		case REVERSI_BALL:
 			P->MinMatchSize = 10;
 			P->ColorCount = 2;
-			P->Width = 20;
-			P->Height = 13;
+			P->width = 20;
+			P->height = 13;
 			break;
 		case PILLARS:
 			P->MinMatchSize = 3;
 			P->ColorCount = 6;
-			P->Width = 6;
-			P->Height = 13;
+			P->width = 6;
+			P->height = 13;
 			break;
 	}
 }
@@ -395,7 +395,7 @@ void RandomizeRow(struct Playfield *P, int y) {
 	// do not naturally create matches
 	int Tries = 50;
 
-	for(int x=0; x<P->Width; x++) {
+	for(int x=0; x<P->width; x++) {
 		while(Tries-->0) { // give up if it can't make an acceptable row after too many tries
 			int Color = random_tile_color(P);
 			if(x >= 2 && GetTile(P, x-1, y) == Color && GetTile(P, x-2, y) == Color)

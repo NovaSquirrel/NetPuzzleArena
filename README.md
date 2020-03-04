@@ -15,4 +15,4 @@ Credits
 - [game background](http://opengameart.org/content/bevouliin-free-game-background-for-game-developers) by Bevouliin
 - Orchestra hits from [soundpacks.com](http://soundpacks.com/free-sound-packs/orchestral-hits-sound-pack/).
 - TTF font: [Denjuu World](http://fontstruct.com/fontstructions/show/1106034/denjuu_world)
-- Accurate Puzzle League physics (Labeled "SNES" ingame) by colour_thief
+- Puzzle League code based on [Panel Attack](https://github.com/sharpobject/panel-attack)

@@ -467,10 +467,10 @@ void ApplyModifiers(struct Playfield *P) {
 				P->Flags |= MOUSE_CONTROL;
 				break;
 			case MOD_PLAYFIELD_WIDTH:
-				P->Width = Value;
+				P->width = Value;
 				break;
 			case MOD_PLAYFIELD_HEIGHT:
-				P->Height = Value + 1;
+				P->height = Value + 1;
 				break;
 		}
 	}

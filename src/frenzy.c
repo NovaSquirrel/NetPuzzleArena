@@ -1,7 +1,8 @@
 /*
  * Net Puzzle Arena
  *
- * Copyright (C) 2016-2018 NovaSquirrel
+ * Copyright (C) 2016-2020 NovaSquirrel
+ * This file contains guidance from Panel Attack's source
  *
  * This program is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -23,546 +24,420 @@ extern int FrameAdvance;
 extern int FrameAdvanceMode;
 
 void InitPuzzleFrenzy(struct Playfield *P) {
-  for(int j=P->Height-5; j>0 && j<P->Height; j++)
-    RandomizeRow(P, j);
+	for(int j=P->height-5; j>0 && j<P->height; j++)
+		RandomizeRow(P, j);
+	P->CursorX = 2;
+	P->CursorY = 6;
 }
 
 // Takes a combo size (in number of tiles) and figures out how much garbage it amounts to
-int GarbageForCombo(struct Playfield *P, int ComboSize, int *List, int ListSize) {
-  int Width = P->Width;
-  ComboSize--; // garbage tiles is combo tiles minus 1
+int garbage_for_combo(struct Playfield *P, int combo_size, int list_size, int *list) {
+	int width = P->width;
+	combo_size--; // garbage tiles is combo tiles minus 1
 
-  int Count = 0;
-  // Keep generating garbage slabs until enough have been made
-  while(ComboSize > 0 && Count <=ListSize) {
-    int PieceSize;
+	int count = 0;
+	// Keep generating garbage slabs until enough have been made
+	while(combo_size > 0 && count <= list_size) {
+		int piece_size;
 
-    // If the next one is small enough then just go for it
-    if(ComboSize <= Width)
-      PieceSize = ComboSize;
-    // if it's not, make sure the one after this is big enough
-    else {
-      PieceSize = Width;
-      if((ComboSize - PieceSize) < 3)
-        PieceSize -= 3-(ComboSize-PieceSize);
-    }
-    ComboSize -= PieceSize;
+		// If the next one is small enough then just go for it
+		if(combo_size <= width)
+			piece_size = combo_size;
+		// if it's not, make sure the one after this is big enough
+		else {
+			piece_size = width;
+			if((combo_size - piece_size) < 3)
+				piece_size -= 3-(combo_size-piece_size);
+		}
+		combo_size -= piece_size;
 
-    List[Count++] = PieceSize;
-  }
-  return Count;
+		list[count++] = piece_size;
+	}
+	return count;
 }
 
 // Calculates the number of points to award for a combo of a given size
-int BasePointsForCombo(int Size) {
-  // https://www.gamefaqs.com/n64/913924-pokemon-puzzle-league/faqs/16679
-  const static int Table[] = {  30,    50,   150,   190,    230,   270,   310,   400,
-                               450,   500,   550,   700,    760,   850,   970,  1120,
-                              1300,  1510,  1750,  2020,   2320,  2650,  3010,  3400,
-                              3820,  4270,  4750,  5260,  15000, 15570, 16170, 16800,
-                             17460, 18150, 18870, 19620,  20400};
-  if(Size < 4)
-    return 0;
-  if(Size >= 4 && Size <= 40)
-    return Table[Size-4];
-  return 20400 + ((Size - 40) * 800);
+int base_points_for_combo(int size) {
+	// https://www.gamefaqs.com/n64/913924-pokemon-puzzle-league/faqs/16679
+	const static int table[] = {30,    50,    150,	 190,   230,   270,   310,   400,
+								450,   500,   550,	 700,   760,   850,   970,   1120,
+								1300,  1510,  1750,	 2020,  2320,  2650,  3010,  3400,
+								3820,  4270,  4750,	 5260,  15000, 15570, 16170, 16800,
+								17460, 18150, 18870, 19620, 20400};
+	if(size < 4)
+		return 0;
+	if(size >= 4 && size <= 40)
+		return table[size-4];
+	return 20400 + ((size - 40) * 800);
 }
 
 // Calculates the number of points to award for a part of a chain
-int PointsForChainPart(int Size) {
+int points_for_chain_part(int size) {
 // Size is the chain number from the original game, minus 1
 // so if you clear blocks and cause a chain, size is 1
-  const static int Table[] = {50, 80, 150, 300, 400, 500, 700, 900, 1100, 1300, 1500, 1800};
-  if(Size <= 1)
-    return 0;
-  if(Size <= 12)
-    return Table[Size-1];
-  return 6980 + ((Size+1 - 12) * 1800);
+	const static int table[] = {50, 80, 150, 300, 400, 500, 700, 900, 1100, 1300, 1500, 1800};
+	if(size <= 1)
+		return 0;
+	if(size <= 12)
+		return table[size-1];
+	return 6980 + ((size+1 - 12) * 1800);
+}
+
+int can_swap(struct Playfield *P, int right) {
+	int x = P->CursorX + right, y = P->CursorY;
+	switch(P->panel_extra[x][y].state) {
+		case STATE_POPPING:
+		case STATE_POPPED:
+		case STATE_MATCHED:
+		case STATE_DIMMED:
+			return 0;
+		case STATE_HOVERING:
+			if(!(P->panel_extra[x][y].flags & FLAG_MATCH_ANYWAY))
+				return 0;
+	}
+	if(P->panel_extra[x][y].flags & (FLAG_DONT_SWAP|FLAG_GARBAGE))
+		return 0;
+	// TODO: Panel Attack's vertical stack check thing?
+	return 1;
+}
+
+int has_flags(struct Playfield *P, int x, int y) {
+	return (P->panel_extra[x][y].state != STATE_NORMAL)
+	|| (P->panel_extra[x][y].flags & (FLAG_SWAPPING_FROM_LEFT|FLAG_DONT_SWAP|FLAG_CHAINING));
+}
+
+void clear_flags(struct Playfield *P, int x, int y) {
+	P->panel_extra[x][y].state = STATE_NORMAL;
+	P->panel_extra[x][y].flags = 0;
+}
+
+int exclude_hover(struct Playfield *P, int x, int y) {
+	if(P->panel_extra[x][y].flags & FLAG_GARBAGE)
+		return 1;
+	switch(P->panel_extra[x][y].state) {
+		case STATE_POPPING:
+		case STATE_POPPED:
+		case STATE_MATCHED:
+		case STATE_HOVERING:
+		case STATE_FALLING:
+			return 1;
+	}
+	return 0;
+}
+
+void swap(struct Playfield *P) {
+	int x = P->CursorX, y = P->CursorY;
+	int Temp = P->playfield[x][y];
+	P->playfield[x][y] = P->playfield[x+1][y];
+	P->playfield[x+1][y] = Temp;
+
+	// Clear all flags except chaining
+	// Panel Attack does clear_flags here, not necessary maybe?
+	P->panel_extra[x][y].flags &= ~FLAG_CHAINING;
+	P->panel_extra[x+1][y].flags &= ~FLAG_CHAINING;
+	P->panel_extra[x+1][y].flags |= FLAG_SWAPPING_FROM_LEFT;
+
+	P->panel_extra[x][y].state = STATE_SWAPPING;
+	P->panel_extra[x+1][y].state = STATE_SWAPPING;
+	P->panel_extra[x][y].timer = 4;
+	P->panel_extra[x+1][y].timer = 4;
+
+	/*	If you're swapping a panel into a position
+		above an empty space or above a falling piece
+		then you can't take it back since it will start falling. */
+	if(y != P->height-2) {
+		if(P->playfield[x][y] &&
+		(!P->playfield[x][y+1] || P->panel_extra[x][y+1].state==STATE_FALLING))
+			P->panel_extra[x][y].flags |= FLAG_DONT_SWAP;
+		if(P->playfield[x+1][y] &&
+		(!P->playfield[x+1][y+1] || P->panel_extra[x+1][y+1].state==STATE_FALLING))
+			P->panel_extra[x+1][y].flags |= FLAG_DONT_SWAP;
+	}
+
+	/*	If you're swapping a blank space under a panel,
+		then you can't swap it back since the panel should
+		start falling. */
+	if(y != 0) {
+		if(!P->playfield[x][y] && P->playfield[x][y-1])
+			P->panel_extra[x][y].flags |= FLAG_DONT_SWAP;
+		if(!P->playfield[x+1][y] && P->playfield[x+1][y-1])
+			P->panel_extra[x+1][y].flags |= FLAG_DONT_SWAP;
+	}
+}
+
+void look_for_matches(struct Playfield *P) {
+
+}
+
+int block_garbage_fall(struct Playfield *P, int x, int y) {
+	return 0;
+}
+
+void set_hoverers(struct Playfield *P, int x, int y, int hover_time, int add_chaining, int extra_tick, int match_anyway) {
+	/*
+		the extra_tick flag is for use during Phase 1&2,
+		when panels above the first should be given an extra tick of hover time.
+		This is because their timers will be decremented once on the same tick
+		they are set, as Phase 1&2 iterates backward through the stack.
+	*/
+	int not_first = 0;
+	int hovers_time = hover_time;
+
+	while(y >= 0) {
+		if(!P->playfield[x][y]
+		|| exclude_hover(P, x, y)
+		|| (P->panel_extra[x][y].state == STATE_HOVERING && P->panel_extra[x][y].timer <= hover_time)) {
+			break;
+		}
+		if(P->panel_extra[x][y].state == STATE_SWAPPING) {
+			hovers_time += P->panel_extra[x][y].timer - 1;
+		} else {
+			int chaining = P->panel_extra[x][y].flags & FLAG_CHAINING;
+			clear_flags(P, x, y);
+			P->panel_extra[x][y].state = STATE_HOVERING;
+			P->panel_extra[x][y].flags = match_anyway ? FLAG_MATCH_ANYWAY : 0;
+			// not sure what panel color 9 is for, it's in the code
+			int adding_chaining = !chaining && add_chaining;
+			if(chaining || adding_chaining) {
+				P->panel_extra[x][y].flags |= FLAG_CHAINING;
+			}
+			P->panel_extra[x][y].timer = hovers_time;
+			if(extra_tick) {
+				P->panel_extra[x][y].timer += not_first;
+			}
+			if(adding_chaining) {
+				P->n_chain_panels++;
+			}
+		}
+		not_first = 1;
+		y--;
+	}
 }
 
 // Run the playfield for one tick
 void UpdatePuzzleFrenzy(struct Playfield *P) {
-  int IsFalling[P->Width][P->Height];
-  int IsGarbage[P->Width * P->Height];
-  int IsChainActive = 0;
+	int swapped_this_frame = 0;
 
-  // Mark the tiles that are currently falling for easy checking
-  memset(IsFalling, 0, sizeof(IsFalling));
-  for(struct FallingChunk *Fall = P->FallingData; Fall; Fall = Fall->Next)
-    for(int h=0; h<Fall->Height; h++)
-      IsFalling[Fall->X][Fall->Y+h] = 1+!Fall->Timer; // 1 is hovering, 2 is falling
-
-  // Mark the garbage tiles for easy checking
-  memset(IsGarbage, 0, sizeof(IsGarbage));
-  for(struct GarbageSlab *Slab = P->GarbageSlabs; Slab; Slab = Slab->Next)
-    for(int w=0; w<Slab->Width; w++)
-      for(int h=0; h<Slab->Height; h++)
-        IsGarbage[(P->Width*Slab->Y+h) + Slab->X+w] = 1;
-
-  // Also look at clearing blocks for chain counts
-  for(struct MatchRow *Match = P->Match; Match; Match=Match->Next) {
-    if(Match->Chain)
-      IsChainActive = 1;
-  }
-  // Apparently I need to look at the playfield for chain counts too
-  for(int x=0; x<P->Width; x++)
-    for(int y=0; y<P->Height-2; y++) {
-      int Chain = GetTile(P, x, y)&PF_CHAIN;
-      if(Chain)
-        IsChainActive = 1;
-    }
-
-  // Cursor movement
-  if(!FrameAdvanceMode || !P->Paused || FrameAdvance) {
-    if(P->SwapTimer) {
-      P->SwapTimer--;
-      if(!P->SwapTimer) {
-        SetTile(P, P->SwapX, P->SwapY, P->SwapColor2);
-        SetTile(P, P->SwapX+1, P->SwapY, P->SwapColor1);
-      }
-    }
-  }
-
-  // If the player isn't currently swapping, allow them to move
-  if(P->KeyNew[KEY_LEFT])
-    P->CursorX -= (P->CursorX != 0);
-  if(P->KeyNew[KEY_DOWN])
-    P->CursorY += (P->CursorY != P->Height-2);
-  if(P->KeyNew[KEY_UP])
-    P->CursorY -= (P->CursorY != 1);
-  if(P->KeyNew[KEY_RIGHT])
-    P->CursorX += (P->CursorX != P->Width-2);
-
-//    if(P->Flags & PULL_BLOCK_HORIZONTAL && OldX != P->CursorX && P->KeyDown[KEY_SWAP])
-//      P->KeyNew[KEY_SWAP] = 1;
-//    if((OldX != P->CursorX || OldY != P->CursorY) && !UsedAutorepeat)
-//      Mix_PlayChannel(-1, SampleMove, 0);
-
-  // Attempt a swap if either rotate key is pressed
-  if(P->KeyNew[KEY_ROTATE_L] || P->KeyNew[KEY_ROTATE_R]) {
-    // if there was a swap going on, force it to complete
-    if(P->SwapTimer) {
-      SetTile(P, P->SwapX, P->SwapY, P->SwapColor2);
-      SetTile(P, P->SwapX+1, P->SwapY, P->SwapColor1);
-    }
-    int Tile1 = GetTile(P, P->CursorX, P->CursorY);
-    int Tile2 = GetTile(P, P->CursorX+1, P->CursorY);
-    if(Tile1 != BLOCK_DISABLED && Tile2 != BLOCK_DISABLED
-      // to do: you CAN catch a tile as it's falling.
-      // this should probably split the falling column into two parts
-      && !IsFalling[P->CursorX][P->CursorY] && !IsFalling[P->CursorX+1][P->CursorY]
-        && IsFalling[P->CursorX][P->CursorY-1]!=1 && IsFalling[P->CursorX+1][P->CursorY-1]!=1
-      ) {
-      P->SwapColor1 = Tile1; // yes, keep the chain count in the tiles!
-      P->SwapColor2 = Tile2; // see https://youtu.be/m1sNm62gCR0?t=1m48s
-
-      if(!(P->Flags & SWAP_INSTANTLY)) {
-        // regular swap, takes 4 frames
-        SetTile(P, P->CursorX, P->CursorY, BLOCK_DISABLED);
-        SetTile(P, P->CursorX+1, P->CursorY, BLOCK_DISABLED);
-        P->SwapTimer = 3;
-        P->SwapX = P->CursorX;
-        P->SwapY = P->CursorY;
-      } else {
-        // instantly swap, no timer
-        SetTile(P, P->CursorX, P->CursorY, Tile2);
-        SetTile(P, P->CursorX+1, P->CursorY, Tile1);
-      }
-#ifdef ENABLE_AUDIO
-      Mix_PlayChannel(-1, SampleSwap, 0);
-#endif
-    }
-  }
-
-  if(P->KeyNew[KEY_PAUSE])
-    P->Paused ^= 1;
-  if(!FrameAdvance && P->Paused) {
-    // allow editing the playfield for debugging stuff
-    if(P->KeyNew[KEY_OK] | P->KeyNew[KEY_ITEM])
-      SetTile(P, P->CursorX, P->CursorY, (GetTile(P, P->CursorX, P->CursorY)+1)%BLOCK_BLUE);
-    if(P->KeyNew[KEY_ACTION])
-      SetTile(P, P->CursorX+1, P->CursorY, (GetTile(P, P->CursorX+1, P->CursorY)+1)%BLOCK_BLUE);
-    if(P->KeyNew[KEY_BACK]) {
-      SetTile(P, P->CursorX, P->CursorY, BLOCK_EMPTY);
-      SetTile(P, P->CursorX+1, P->CursorY, BLOCK_EMPTY);
-    }
-    return;
-  }
-
-/////////////////// MATCHES ///////////////////
-
-  int IncrementedChain = 0; // can only increment chain once per frame
-
-  // Look for matches
-  struct MatchRow *FirstMatch = NULL, *CurMatch = NULL;
-  int Used[P->Width][P->Height];  // horizontal
-  int UsedV[P->Width][P->Height]; // vertical
-  memset(Used, 0, sizeof(Used));
-  memset(UsedV, 0, sizeof(UsedV));
-  for(int y=0; y<P->Height-1; y++)
-    for(int x=0; x<P->Width; x++) {
-      int Horiz = 0, Vert = 0, Color = GetColor(P, x, y);
-      if(!Color || Color==BLOCK_DISABLED || IsFalling[x][y])
-        continue;
-      // Don't trigger any matches if there are any empty tiles below. Should this be kept?
-      if(y < P->Height-2 && !GetTile(P, x, y+1))
-        continue;
-
-      // Was there a chain in this match?
-      int MatchHasChain = 0;
-
-      if(!Used[x][y])
-        while((x+Horiz+1 < P->Width && GetColor(P, x+Horiz+1, y) == Color) &&
-              !IsFalling[x+Horiz+1][y] && (y!=P->Height-2 || GetColor(P, x+Horiz+1, y+1)))
-          Horiz++;
-      if(!UsedV[x][y])
-        while(y+Vert+1 < P->Height-1 && !UsedV[x][y+Vert+1] && GetColor(P, x, y+Vert+1) == Color)
-          Vert++;
-
-      // mark tiles vertically that were used in the combo, also look for tiles with chain flag
-      if(Vert >= P->MinMatchSize-1) {
-        for(int i=0; i<=Vert; i++) {
-          UsedV[x][y+i] = 1;
-          if(GetTile(P, x, y+i)&PF_CHAIN)
-            MatchHasChain = 1;
-        }
-      }
- 
-     // look at chain size first
-      for(int i=0; i<=Horiz; i++) {
-        if(GetTile(P, x+i, y)&PF_CHAIN)
-          MatchHasChain = 1;
-      }
-
-      // Are the lines of continuous tiles long enough to make a combo/match?
-      if(Vert >= P->MinMatchSize-1 || Horiz >= P->MinMatchSize-1)
-        if(MatchHasChain) {
-          if(!IncrementedChain) {
-            P->ChainCounter++;
-            IncrementedChain = 1;
-            P->Score += PointsForChainPart(P->ChainCounter);
-          }
-          // original game seems to only be able to handle one chain going on at once, see this TAS:
-          // see https://www.youtube.com/watch?v=2GwvWqrhp4o
-          IsChainActive = 1;
-          SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Chain %i", P->ChainCounter);
-        }
-
-      if(Horiz >= P->MinMatchSize-1) {
-        for(int i=0; i<=Horiz; i++)
-          Used[x+i][y] = 1;
-        Used[x][y] = Horiz+1; // write the width
-      }
-    }
-
-  // If there are no chains active then reset the counter
-  if(P->ChainResetTimer) {
-    P->ChainResetTimer--;
-    if(!P->ChainResetTimer) {
-      LogMessage("Chain of length %i ended", P->ChainCounter);
-      P->ChainCounter = 0;
-    }
-  }
-  if(IsChainActive)
-    P->ChainResetTimer = 0;
-  if(!IsChainActive && P->ChainCounter && !P->ChainResetTimer)
-    P->ChainResetTimer = 2;
-
-  // create match structs for the matches that are found, and do related tasks
-  int ComboSize = 0;
-
-  // now actually go make those structs
-  int MatchULX = -1, MatchULY = -1;
-  for(int y=0; y<P->Height-1; y++)
-    for(int x=0; x<P->Width; x++) {
-      if(Used[x][y] || UsedV[x][y]) {
-        // Tetris Attack displays the combo number next to the upper left most tile in the match
-        if(MatchULX < 0) {
-          MatchULX = x;
-          MatchULY = y;
-        }
-        // trigger garbage clears next to every cleared tile
-        TriggerGarbageClear(P, x-1, y, IsGarbage);
-        TriggerGarbageClear(P, x+1, y, IsGarbage);
-        TriggerGarbageClear(P, x, y-1, IsGarbage);
-        TriggerGarbageClear(P, x, y+1, IsGarbage);
-
-        // allocate match struct, fill everything in
-        struct MatchRow *Match = (struct MatchRow*)calloc(1, sizeof(struct MatchRow));
-        int Width = Used[x][y];
-        if(!Width)
-          Width = 1;
-        ComboSize += Width;
-        Match->Color = GetColor(P, x, y);
-        Match->X = x;
-        Match->Y = y;
-        Match->DisplayX = x;
-        Match->DisplayWidth = Width;
-        Match->Width = Width;
-        Match->Child = NULL;
-        Match->Next = NULL;
-        Match->Timer1 = 0;
-        Match->Chain = IncrementedChain;
-        if(!FirstMatch)
-          Match->Timer2 = 26;
-        else
-          Match->Timer2 = 10;
-
-        // replace the clearing tiles with the disabled tile type
-        for(int i=0; i<Width; i++)
-          SetTile(P, x+i, y, BLOCK_DISABLED);
-
-        // add this match struct to the list
-        if(!FirstMatch)
-          FirstMatch = Match;
-        if(CurMatch)
-          CurMatch->Child = Match;
-        CurMatch = Match;
-
-        x+=Width-1;
-      }
-    }
-
-  // give points if a combo was made
-  if(ComboSize) {
-    P->Score += BasePointsForCombo(ComboSize);
-    // chain bonus
-    if(P->ChainCounter)
-      P->Score += PointsForChainPart(P->ChainCounter-1);
-
-    // play sound effects and make visual effects
-    if(ComboSize >= 4 || (ComboSize == 3 && IncrementedChain)) {
-#ifdef ENABLE_AUDIO
-      Mix_PlayChannel(-1, SampleCombo, 0);
-#endif
-
-      if(ComboSize >= 4 || IncrementedChain) {
-        struct ComboNumber *Num = (struct ComboNumber*)malloc(sizeof(struct ComboNumber));
-        Num->X = MatchULX*TILE_W + TILE_W/2;
-        Num->Y = MatchULY*TILE_H + TILE_H/2;
-        if(P->ChainCounter) {
-          Num->Number = P->ChainCounter+1; //(ComboChainSize>>8)+1;
-          Num->Flags = TEXT_CHAIN|TEXT_CENTERED;
-        } else {
-          Num->Number = ComboSize;
-          Num->Flags = TEXT_CENTERED;
-        }
-        Num->Timer = 30;
-        Num->Next = P->ComboNumbers;
-        Num->Speed = 0;
-        P->ComboNumbers = Num;
-      }
-    }
-  }
-
-  // Add the list of matches to the playfield struct
-  if(FirstMatch) {
-    if(!P->Match)
-      P->Match = FirstMatch;
-    else {
-      FirstMatch->Next = P->Match;
-      P->Match = FirstMatch;
-    }
-    FirstMatch->Timer1 = 46;
-  }
-  
-  ClearMatchAnimation(P, 1);
-
-  // Change disabled blocks back to regular ones
-  memset(Used, 0, sizeof(Used));
-  for(struct GarbageSlab *Slab = P->GarbageSlabs; Slab; Slab=Slab->Next)
-    for(int i=0; i<Slab->Width; i++)
-      for(int j=0; j<Slab->Height; j++)
-        Used[Slab->X+i][Slab->Y+j] = 1;
-  for(struct MatchRow *Heads = P->Match; Heads; Heads=Heads->Next)
-    for(struct MatchRow *Match = Heads; Match; Match=Match->Child)
-      for(int i=0; i<Match->Width; i++)
-        Used[Match->X+i][Match->Y] = 1;
-  for(int x=0; x<P->Width; x++)
-    for(int y=0; y<P->Height; y++)
-      if(GetColor(P, x, y) == BLOCK_DISABLED && !Used[x][y]
-      && (!P->SwapTimer || (y != P->CursorY && (x != P->CursorX && x != P->CursorX+1))))
-        SetTile(P, x, y, BLOCK_EMPTY);
-
-/////////////////// GRAVITY ///////////////////
-
-  // Look for tiles that need to start falling, and make a FallingChunk so they start falling
-  for(int x=0; x< P->Width; x++) {
-    for(int y=0; y<P->Height-1; y++) {
-      int Color = GetColor(P, x, y);
-      if(!Color || Color == BLOCK_DISABLED || IsFalling[x][y])
-        continue;
-
-      // find the bottom of this stack
-      int Bottom = y+1;
-      while(Bottom < P->Height-1) {
-        int Color2 = GetColor(P, x, Bottom);
-        if(!Color2 || Color2 == BLOCK_DISABLED || IsFalling[x][Bottom])
-          break;
-        Bottom++;
-      }
-
-      if(Bottom == P->Height-1)
-        break;
-      if(GetColor(P, x, Bottom) != BLOCK_DISABLED) {
-        // create the struct
-        struct FallingChunk *Fall = (struct FallingChunk*)malloc(sizeof(struct FallingChunk));
-        Fall->X = x;
-        Fall->Y = y;
-        Fall->Height = Bottom-y;
-        Fall->Timer = HOVER_TIME;
-        Fall->Next = NULL;
-
-        // add to the list of falling chunks
-        if(!P->FallingData)
-          P->FallingData = Fall;
-        else {
-          Fall->Next = P->FallingData;
-          P->FallingData = Fall;
-        }
-      }
-
-      y = Bottom-1;
-    }
-  }
-
-  // remove Just Landed flag
-  for(int x=0; x<P->Width; x++)
-    for(int y=0; y<P->Height-1; y++) {
-      int Tile = GetTile(P, x, y);
-      if(Tile & PF_JUST_LANDED)
-        SetTile(P, x, y, Tile & PF_COLOR);
-    }
-
-  // move falling things down
-  int PlayDropSound = 0;
-  for(struct FallingChunk *F = P->FallingData; F; ) {
-    int Free = 0;
-    struct FallingChunk *Next = F->Next;
-
-    if(F->Timer) {
-      F->Timer--;
-      F = Next;
-      continue;
-    }
-
-    // if you're at the bottom, stop falling
-    int ColorAtBottom = GetTile(P, F->X, F->Y+F->Height);
-
-    if(F->Y + F->Height >= P->Height-1) {
-      PlayDropSound = 1;
-      Free = 1;
-    } else if(ColorAtBottom == BLOCK_EMPTY){
-      for(int y = F->Y+F->Height; y > F->Y; y--)
-        SetTile(P, F->X, y, GetTile(P, F->X, y-1));
-      SetTile(P, F->X, F->Y, BLOCK_EMPTY);
-      F->Y++;
-//    } else if(ColorAtBottom == BLOCK_DISABLED) {
-//      F->Timer = HOVER_TIME;
-//      F = Next;
-//      continue;
-    } else if(ColorAtBottom && !IsFalling[F->X][F->Y + F->Height]) {
-      PlayDropSound = 1;
-      Free = 1;
-    }
-
-    // free up the falling chunk and update pointers
-    if(Free) {
-      if(P->FallingData == F)
-        P->FallingData = F->Next;
-      else {
-        // find the previous one and make it point to the next
-        struct FallingChunk *Prev = P->FallingData;
-        while(Prev->Next != F)
-          Prev = Prev->Next;
-        Prev->Next = F->Next;
-      }
-
-      for(int y=F->Y; y < (F->Y+F->Height); y++)
-        SetTile(P, F->X, y, GetTile(P, F->X, y) | PF_JUST_LANDED);
-      free(F);
-    }
-
-    F = Next;
-  }
-#ifdef ENABLE_AUDIO
-  if(PlayDropSound)
-    Mix_PlayChannel(-1, SampleDrop, 0);
-#endif
-
-  // Make garbage slabs fall too
-  for(struct GarbageSlab *Slab = P->GarbageSlabs; Slab; Slab=Slab->Next) {
-    if(Slab->Clearing)
-      continue;
-    int OkayToFall = 1;
-    int Bottom = Slab->Y + Slab->Height;
-    if(Bottom >= P->Height-1)
-      OkayToFall = 0;
-    else for(int x=Slab->X; x<(Slab->X+Slab->Width); x++)
-      if(GetTile(P, x, Bottom) & PF_COLOR)
-        OkayToFall = 0;
-    if(OkayToFall) {
-      for(int x=Slab->X; x<(Slab->X+Slab->Width); x++) {
-        SetTile(P, x, Slab->Y, 0);
-        SetTile(P, x, Bottom, BLOCK_DISABLED);
-      }
-      Slab->Y++;
-    }
-  }
+	if(P->KeyNew[KEY_PAUSE])
+		P->Paused ^= 1;
+	if(!FrameAdvance && P->Paused) {
+		// allow editing the playfield for debugging stuff
+		if(P->KeyNew[KEY_OK] | P->KeyNew[KEY_ITEM])
+			SetTile(P, P->CursorX, P->CursorY, (GetTile(P, P->CursorX, P->CursorY)+1)%BLOCK_BLUE);
+		if(P->KeyNew[KEY_ACTION])
+			SetTile(P, P->CursorX+1, P->CursorY, (GetTile(P, P->CursorX+1, P->CursorY)+1)%BLOCK_BLUE);
+		if(P->KeyNew[KEY_BACK]) {
+			SetTile(P, P->CursorX, P->CursorY, BLOCK_EMPTY);
+			SetTile(P, P->CursorX+1, P->CursorY, BLOCK_EMPTY);
+		}
+		return;
+	}
 
 
-/////////////////// RISING ///////////////////
+	// Phase 0 //////////////////////////////////////////////////////////////
+	// Stack automatic rising
 
-  // Handle rising
-  if(!P->LiftKeyOn && !P->RiseStopTimer && (!P->Match || P->Flags&LIFT_WHILE_CLEARING) && P->KeyDown[KEY_LIFT]) {
-    if(P->Flags & INSTANT_LIFT) {
-      if(P->KeyNew[KEY_LIFT]) {
-        P->Rise = 16;
-        P->Score++;
-      }
-    } else {
-      P->Score++;
-      P->LiftKeyOn = 1;
-      P->RiseStopTimer = 10;
-    }
-  }
+	// TODO
 
-  if(P->LiftKeyOn)
-    P->Rise++;
-  else if(P->RiseStopTimer)
-    P->RiseStopTimer--;
-  else if(!P->Match && !IsChainActive && !(retraces & 15))
-    P->Rise++;
-  if(P->Rise >= 16) {
-    P->LiftKeyOn = 0;
+	// Begin the swap we input last frame
+	if(P->do_swap) {
+		swap(P);
+		P->do_swap = 0;
+		swapped_this_frame = 1;
+	}
 
-    // push playfield up
-    for(int y=0; y<P->Height-1; y++)
-      for(int x=0; x<P->Width; x++)
-        SetTile(P, x, y, GetTile(P, x, y+1));
-    P->CursorY--;
-    P->Rise = 0;
-    P->SwapY--;
+	look_for_matches(P);
 
-    // generate new blocks
-    RandomizeRow(P, P->Height-1);
-    // also update falling data
-    for(struct FallingChunk *Fall = P->FallingData; Fall; Fall = Fall->Next)
-      Fall->Y--;
+	// Clean up the value we're using to match newly hovering panels
+	for(int x=0; x<P->width; x++)
+		for(int y=0; y<P->height; y++)
+			P->panel_extra[x][y].flags &= ~FLAG_MATCH_ANYWAY;
 
-    // move garbage slabs up
-    for(struct GarbageSlab *Slab = P->GarbageSlabs; Slab; Slab=Slab->Next)
-      Slab->Y--;
 
-    for(struct ComboNumber *Num = P->ComboNumbers; Num; Num=Num->Next)
-      Num->Y -= TILE_H;
+	// Phase 2. /////////////////////////////////////////////////////////////
+	// Timer-expiring actions + falling
+	char propogate_fall[PLAYFIELD_MAX_WIDTH];
+	memset(propogate_fall, 0, sizeof(propogate_fall));
+	int skip_col = 0;
+	for(int y=P->height-1; y>=0; y--) {
+		for(int x=0; x<P->width; x++) {
+			if(skip_col > 0) {
+				skip_col--;
+				continue;
+			}
+			int panel = P->playfield[x][y];
+			struct panel_extra *extra = &P->panel_extra[x][y];
+			if(extra->flags & FLAG_GARBAGE) {
+				if(extra->state == STATE_MATCHED) {
+					// TODO
+				}
+				continue;
+			}
+			if(propogate_fall[x]) {
+				if(block_garbage_fall(P, x, y)) {
+					propogate_fall[x] = 0;
+				} else {
+					extra->state = STATE_FALLING;
+					extra->timer = 0;
+				}
+			}
+			if(extra->state == STATE_FALLING) {
+				// Something on the bottom row will definitely land
+				if(y == P->height-2) {
+					extra->state = STATE_LANDING;
+					extra->timer = 12;
+				} else if(P->playfield[x][y+1] && P->panel_extra[x][y+1].state != STATE_FALLING) {
+					// If it lands on a hovering panel, it inherits that panel's falling time
+					if(P->panel_extra[x][y+1].state == STATE_HOVERING) {
+						extra->state = STATE_NORMAL;
+						set_hoverers(P, x, y, P->panel_extra[x][y+1].timer, 0, 0, 0);
+					} else {
+						extra->state = STATE_LANDING;
+						extra->timer = 12;
+					}
+				} else {
+					// Move the panel down
+					P->playfield[x][y+1] = P->playfield[x][y];
+					P->panel_extra[x][y+1] = P->panel_extra[x][y];
+					P->playfield[x][y] = 0;
+					clear_flags(P, x, y);
+				}
+			} else if(has_flags(P, x, y) && extra->timer) {
+				extra->timer--;
+				if(!extra->timer) {
+					int from_left;
+					switch(extra->state) {
+						case STATE_SWAPPING:
+							extra->state = STATE_NORMAL;
+							from_left = extra->flags & FLAG_SWAPPING_FROM_LEFT;
+							extra->flags &= ~(FLAG_DONT_SWAP|FLAG_SWAPPING_FROM_LEFT);
 
-    // move exploding blocks up
-    for(struct MatchRow *Heads = P->Match; Heads; Heads=Heads->Next)
-      for(struct MatchRow *Match = Heads; Match; Match=Match->Child)
-        Match->Y--;
-  }
+							if(!panel) {
+								// an empty space finished swapping...
+								// panels above it hover
+								set_hoverers(P, x, y-1, HOVER_TIME+1, 0, 0, 0);
+								break;
+							}
+							if(y != P->height-2)
+								break;
+							if(!P->playfield[x][y+1]) {
+								set_hoverers(P, x, y, HOVER_TIME, 0, 1, 0);
+								if(from_left) {
+									if(P->panel_extra[x][y+1].state == STATE_FALLING)
+										set_hoverers(P, x-1, y, HOVER_TIME, 0, 1, 0);
+								} else {
+									if(P->panel_extra[x][y-1].state == STATE_FALLING)
+										set_hoverers(P, x+1, y, HOVER_TIME+1, 0, 0, 0);
+								}
+							} else if (P->panel_extra[x][y+1].state == STATE_HOVERING) {
+								set_hoverers(P, x, y, HOVER_TIME, 0, 1, P->panel_extra[x][y+1].flags & FLAG_MATCH_ANYWAY);
+							}
+							break;
+						case STATE_HOVERING:
+							if(P->panel_extra[x][y+1].state == STATE_HOVERING) {
+								extra->timer = P->panel_extra[x][y+1].timer;
+							} else if(P->playfield[x][y+1]) {
+								extra->state = STATE_LANDING;
+								extra->timer = 12;
+							} else {
+								// Move the panel down
+								extra->state = STATE_FALLING;
+								P->playfield[x][y+1] = P->playfield[x][y];
+								P->panel_extra[x][y+1] = P->panel_extra[x][y];
+								P->playfield[x][y] = 0;
+								clear_flags(P, x, y);
+							}
+							break;
+						case STATE_LANDING:
+							extra->state = STATE_NORMAL;
+							break;
+						case STATE_MATCHED:
+							extra->state = STATE_POPPING;
+							extra->timer = extra->combo_index * 12; // self.FRAMECOUNT_POP
+							break;
+						case STATE_POPPING:
+							P->Score += 10;
 
-  if(!P->CursorY)
-   P->CursorY = 1;
+							if(extra->combo_size == extra->combo_index) {
+								P->panels_cleared++;
+								// TODO: metal panels
+								P->popped_panel_index = extra->combo_index;
+								P->playfield[x][y] = 0;
+								if(extra->flags & FLAG_CHAINING) {
+									P->n_chain_panels--;
+								}
+								clear_flags(P, x, y);
+								set_hoverers(P, x, y-1, HOVER_TIME+1, 1, 0, 1);
+							} else {
+								extra->state = STATE_POPPED;
+								extra->timer = (extra->combo_size - extra->combo_index) * 12; // self.FRAMECOUNT_POP
+								P->panels_cleared++;
+								// TODO: metal panels
+								P->popped_panel_index = extra->combo_index;
+							}
+							break;
+						case STATE_POPPED:
+							if(P->panels_to_speedup)
+								P->panels_to_speedup--;
+							if(extra->flags & FLAG_CHAINING) {
+								P->n_chain_panels--;
+							}
+							P->playfield[x][y] = 0;
+							clear_flags(P, x, y);
+							set_hoverers(P, x, y-1, HOVER_TIME+1, 1, 0, 1);
+							break;
+						default:
+							LogMessage("Call Grian");
+					}
+				}
+			}
+		}
+	}
+
+	// Phase 3. /////////////////////////////////////////////////////////////
+	// Actions performed according to player input
+
+	// CURSOR MOVEMENT
+	if(P->KeyNew[KEY_LEFT])
+		P->CursorX -= (P->CursorX != 0);
+	if(P->KeyNew[KEY_DOWN])
+		P->CursorY += (P->CursorY != P->height-2);
+	if(P->KeyNew[KEY_UP])
+		P->CursorY -= (P->CursorY != 1);
+	if(P->KeyNew[KEY_RIGHT])
+		P->CursorX += (P->CursorX != P->width-2);
+	if(!P->CursorY)
+		P->CursorY = 1;
+
+	// Attempt a swap if either rotate key is pressed
+	if(can_swap(P, 0) && can_swap(P, 1) && !swapped_this_frame
+		&& (GetColor(P, P->CursorX, P->CursorY) || GetColor(P, P->CursorX+1, P->CursorY))
+		&& (P->KeyNew[KEY_ROTATE_L] || P->KeyNew[KEY_ROTATE_R])) {
+		P->do_swap = 1;
+	}
+
+	// MANUAL STACK RAISING
+	// TODO
+
+	// If at the end of the routine there are no chain panels, the chain ends.
+	if(P->chain_counter && !P->n_chain_panels) {
+		LogMessage("Chain of length %i ended", P->chain_counter);
+		P->chain_counter = 0;
+	}
+
+	P->prev_active_panels = P->n_active_panels;
+	P->n_active_panels = 0;
+	for(int x=0; x<P->width; x++) {
+		for(int y=0; y<P->height; y++) {
+			if(
+				((P->panel_extra[x][y].flags & FLAG_GARBAGE) && P->panel_extra[x][y].state)
+				|| (P->playfield[x][y] && P->panel_extra[x][y].state != STATE_LANDING &&
+					(exclude_hover(P, x, y) || P->panel_extra[x][y].state == STATE_SWAPPING)
+					&& !(P->panel_extra[x][y].flags & FLAG_GARBAGE))
+				|| P->panel_extra[x][y].state == STATE_SWAPPING
+			)
+				P->n_active_panels++;
+		}
+	}
+
 }

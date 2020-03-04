@@ -183,7 +183,33 @@ struct JoypadMapping {
 #define ACTIVE_JOY_MAX 7
 extern struct JoypadMapping ActiveJoysticks[ACTIVE_JOY_MAX];
 
+enum panel_state {
+	STATE_NORMAL,
+	STATE_HOVERING,
+	STATE_LANDING,
+	STATE_FALLING,
+	STATE_MATCHED,
+	STATE_POPPING,
+	STATE_POPPED,
+	STATE_SWAPPING,
+	STATE_DIMMED,    // Bottom row, coming in
+};
+
+enum panel_flag {
+	FLAG_CHAINING =           0x0001,
+	FLAG_SWAPPING_FROM_LEFT = 0x0002,
+	FLAG_DONT_SWAP =          0x0004,
+	FLAG_GARBAGE =            0x0008,
+	FLAG_MATCH_ANYWAY =       0x0010,
+};
+
 struct panel_extra {
+	int state;
+	int timer;
+	uint16_t flags;
+	uint16_t combo_index;
+	uint16_t combo_size;
+/*
 	int fall;
 	int hover;   // timer for until the tile falls
 	int swap;    // currently being swapped if nonzero
@@ -191,11 +217,12 @@ struct panel_extra {
 	int burst;   // timer for actually clearing out tiles
 	int flash;   // timer for the flash before clearing out tiles
 	int chain;   // if nonzero, tile causes a chain if involved in a match
+*/
 };
 
 struct Playfield {
 	int GameType;
-	int Width, Height;
+	int width, height;
 	int CursorX, CursorY;
 	int Paused;
 	uint32_t Flags;
@@ -207,8 +234,7 @@ struct Playfield {
 	int playfield[PLAYFIELD_MAX_WIDTH][PLAYFIELD_MAX_HEIGHT];
 	struct panel_extra panel_extra[PLAYFIELD_MAX_WIDTH][PLAYFIELD_MAX_HEIGHT];
 
-	int ChainCounter;
-	int ChainResetTimer;
+	int chain_counter;
 	uint32_t Score;
 	int MouseX, MouseY;
 
@@ -216,14 +242,18 @@ struct Playfield {
 	void *Extra;
 
 	// Frenzy
-	int Rise;
+	int speed;
+	int y_scroll; // amount of pixels the playfield is scrolled by
+	int rise_lock;
+	int do_swap;
 	int LiftKeyOn, RiseStopTimer;
-	int SwapTimer, SwapColor1, SwapColor2;
 	struct MatchRow *Match;
 	struct FallingChunk *FallingData;
 	struct ComboNumber *ComboNumbers;
 	struct GarbageSlab *GarbageSlabs;
-	int SwapX, SwapY;
+	int manual_raise, manual_raise_yet;
+	int n_chain_panels, prev_active_panels, n_active_panels, panels_cleared;
+	int popped_panel_index, panels_to_speedup;
 
 	// Falling blocks
 	int FallTimer;

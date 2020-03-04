@@ -82,11 +82,11 @@ void GameplayStart() {
 				int Buttons = SDL_GetMouseState(NULL, NULL);
 				// ignore if button isn't pressed
 				if(Buttons & SDL_BUTTON(SDL_BUTTON_LEFT) || (Player1.Flags & MOUSE_CONTROL)) {
-					int VisualWidth = Player1.Width * TILE_W;
-					int VisualHeight = (Player1.Height-1) * TILE_H;
-					int X = (ScreenWidth/2)-(Player1.Width*TILE_W)/2;
-					int Y = (ScreenHeight/2)-((Player1.Height-1)*TILE_H)/2;
-					int Rise = Player1.Rise * (TILE_H / 16);
+					int VisualWidth = Player1.width * TILE_W;
+					int VisualHeight = (Player1.height-1) * TILE_H;
+					int X = (ScreenWidth/2)-(Player1.width*TILE_W)/2;
+					int Y = (ScreenHeight/2)-((Player1.height-1)*TILE_H)/2;
+					int Rise = Player1.y_scroll * (TILE_H / 16);
 					// ignore if outside the playfield
 					if(e.motion.x > X && e.motion.x < X+VisualWidth && e.motion.y > Y && e.motion.y < Y+VisualHeight) {
 						int MouseX = (e.motion.x - X) / TILE_W;;
@@ -94,7 +94,7 @@ void GameplayStart() {
 						if(Player1.Flags & MOUSE_CONTROL) { // mouse mode targets the middle of two tiles horizontally
 							Player1.CursorX = (e.motion.x - X - TILE_W/2) / TILE_W;
 							Player1.CursorY = (e.motion.y - Y + Rise) / TILE_H;
-							if(Player1.CursorX >= Player1.Width-1)
+							if(Player1.CursorX >= Player1.width-1)
 								Player1.CursorX--;
 						}
 						if((Player1.Flags & STYLUS_CONTROL) && Player1.MouseX != MouseX && Player1.MouseY == MouseY) {
@@ -116,7 +116,7 @@ void GameplayStart() {
 		UpdatePlayfield(&Player1);
 
 		SDL_RenderCopy(ScreenRenderer, GameBG, NULL, NULL);
-		DrawPlayfield(&Player1, (ScreenWidth/2)-(Player1.Width*TILE_W)/2, (ScreenHeight/2)-((Player1.Height-1)*TILE_H)/2);
+		DrawPlayfield(&Player1, (ScreenWidth/2)-(Player1.width*TILE_W)/2, (ScreenHeight/2)-((Player1.height-1)*TILE_H)/2);
 		DrawText(GameFont, (ScreenWidth/2), 10*ScaleFactor, TEXT_CENTERED, "%i", Player1.Score);
 
 //		DrawPlayfield(&Player1, 8*ScaleFactor, (ScreenHeight/2)-((Player1.Height-1)*TILE_H)/2);
