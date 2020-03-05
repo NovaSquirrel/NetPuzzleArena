@@ -201,6 +201,7 @@ enum panel_flag {
 	FLAG_DONT_SWAP =          0x0004,
 	FLAG_GARBAGE =            0x0008,
 	FLAG_MATCH_ANYWAY =       0x0010,
+	FLAG_MATCHING =           0x0020,
 };
 
 struct panel_extra {
@@ -209,6 +210,7 @@ struct panel_extra {
 	uint16_t flags;
 	uint16_t combo_index;
 	uint16_t combo_size;
+	uint16_t chain_index;
 /*
 	int fall;
 	int hover;   // timer for until the tile falls
@@ -260,6 +262,8 @@ struct Playfield {
 	int LockTimer;
 	int Active;
 	int Direction; // for Avalanche
+	int SwapColor1;
+	int SwapColor2;
 	int SwapColor3; // for pillars
 	int PieceCount; // number of pieces the player has placed so far
 

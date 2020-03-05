@@ -42,7 +42,7 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
 #endif
 
   // Draw tiles
-  if(1) { // original style, use MatchRow structs
+  if(P->GameType != FRENZY) { // original style, use MatchRow structs
     for(int x=0; x<P->width; x++)
       for(int y=0; y<P->height-1; y++) {
         int Tile = P->playfield[x][y]&PF_COLOR;
@@ -70,14 +70,13 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
           blit(TileSheet, ScreenRenderer, TILE_W*Match->Color, SourceY, DrawX+(Match->DisplayX+i)*TILE_W, DrawY+Match->Y*TILE_H-Rise, TILE_W, TILE_H);
       }
     }
-    // Draw swapping tiles
-    if(P->SwapTimer) {
-      int Offset = (4-P->SwapTimer)*4*ScaleFactor;
-      blit(TileSheet, ScreenRenderer, TILE_W*P->SwapColor1, 0, DrawX+P->SwapX*TILE_W+Offset, DrawY+P->SwapY*TILE_H-Rise, TILE_W, TILE_H);
-      blit(TileSheet, ScreenRenderer, TILE_W*P->SwapColor2, 0, DrawX+(P->SwapX+1)*TILE_W-Offset, DrawY+P->SwapY*TILE_H-Rise, TILE_W, TILE_H);
-    }
-  } else { // extended tile information, ignore MatchRow structs
-/*
+//    // Draw swapping tiles
+//    if(P->SwapTimer) {
+//      int Offset = (4-P->SwapTimer)*4*ScaleFactor;
+//      blit(TileSheet, ScreenRenderer, TILE_W*P->SwapColor1, 0, DrawX+P->SwapX*TILE_W+Offset, DrawY+P->SwapY*TILE_H-Rise, TILE_W, TILE_H);
+//      blit(TileSheet, ScreenRenderer, TILE_W*P->SwapColor2, 0, DrawX+(P->SwapX+1)*TILE_W-Offset, DrawY+P->SwapY*TILE_H-Rise, TILE_W, TILE_H);
+//    }
+  } else { // Frenzy mode
     // draw the main playfield
     for(int x=0; x<P->width; x++)
       for(int y=0; y<P->height-1; y++) {
@@ -86,20 +85,24 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
         int YState = 0;
         if(!Tile)
           continue;
-        if(Extra->flash)
+        if(Extra->state == STATE_MATCHED)
           YState = 1;
-        else if(Extra->burst)
+        else if(Extra->state == STATE_POPPING)
           YState = 2;
-        else if(Extra->matched)
+        else if(Extra->state == STATE_POPPED)
           continue;
-        blit(TileSheet, ScreenRenderer, TILE_W*Tile, TILE_H*YState, DrawX+x*TILE_W+Extra->swap*ScaleFactor, DrawY+y*TILE_H-Rise, TILE_W, TILE_H);
+		if(Extra->state != STATE_SWAPPING) {
+			blit(TileSheet, ScreenRenderer, TILE_W*Tile, TILE_H*YState, DrawX+x*TILE_W, DrawY+y*TILE_H-Rise, TILE_W, TILE_H);
+		} else {
+			blit(TileSheet, ScreenRenderer, TILE_W*Tile, TILE_H*YState, DrawX+x*TILE_W, DrawY+y*TILE_H-Rise, TILE_W, TILE_H);
+//			blit(TileSheet, ScreenRenderer, TILE_W*Tile, TILE_H*YState, DrawX+x*TILE_W+Extra->swap*ScaleFactor, DrawY+y*TILE_H-Rise, TILE_W, TILE_H);
+		}
       }
     // draw the bottom row
     for(int x=0; x<P->width; x++) {
       int Tile = P->playfield[x][P->height-1]&PF_COLOR;
       blit(TileSheet, ScreenRenderer, TILE_W*Tile, TILE_H*2, DrawX+x*TILE_W, DrawY+(P->height-1)*TILE_H-Rise, TILE_W, TILE_H);
     }
-*/
   }
 
   // Draw garbage slabs

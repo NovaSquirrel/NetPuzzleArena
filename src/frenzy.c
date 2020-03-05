@@ -20,8 +20,13 @@
 #include "puzzle.h"
 
 #define HOVER_TIME 12
+#define FLASH_TIME 44
+#define FACE_TIME 17
+#define POP_TIME 9
+#define MATCH_TIME (FACE_TIME + FLASH_TIME)
 extern int FrameAdvance;
 extern int FrameAdvanceMode;
+
 
 void InitPuzzleFrenzy(struct Playfield *P) {
 	for(int j=P->height-5; j>0 && j<P->height; j++)
@@ -107,8 +112,7 @@ int has_flags(struct Playfield *P, int x, int y) {
 }
 
 void clear_flags(struct Playfield *P, int x, int y) {
-	P->panel_extra[x][y].state = STATE_NORMAL;
-	P->panel_extra[x][y].flags = 0;
+	memset(&P->panel_extra[x][y], 0, sizeof(struct panel_extra));
 }
 
 int exclude_hover(struct Playfield *P, int x, int y) {
@@ -124,6 +128,25 @@ int exclude_hover(struct Playfield *P, int x, int y) {
 	}
 	return 0;
 }
+
+int exclude_match(struct Playfield *P, int x, int y) {
+	if(!P->playfield[x][y])
+		return 1;
+	switch(P->panel_extra[x][y].state) {
+		case STATE_POPPING:
+		case STATE_POPPED:
+		case STATE_SWAPPING:
+		case STATE_DIMMED:
+		case STATE_MATCHED:
+		case STATE_FALLING:
+			return 1;
+		case STATE_HOVERING:
+			if(!(P->panel_extra[x][y].flags & FLAG_MATCH_ANYWAY))
+				return 1;
+	}
+	return 0;
+}
+
 
 void swap(struct Playfield *P) {
 	int x = P->CursorX, y = P->CursorY;
@@ -165,7 +188,123 @@ void swap(struct Playfield *P) {
 	}
 }
 
+int set_matched(struct Playfield *P, int x, int y, int *is_chain) {
+	int added = 0;
+
+	if(!(P->panel_extra[x][y].flags & FLAG_MATCHING)) {
+		added = 1;
+		P->panel_extra[x][y].flags |= FLAG_MATCHING;
+	}
+	if((P->panel_extra[x][y].flags & (FLAG_MATCH_ANYWAY|FLAG_CHAINING)) == (FLAG_MATCH_ANYWAY|FLAG_CHAINING)) {
+		P->panel_extra[x][y].flags &= ~FLAG_CHAINING;
+		P->n_chain_panels--;
+	}
+	if(P->panel_extra[x][y].flags & FLAG_CHAINING)
+		*is_chain = 1;
+	return added;
+}
+
 void look_for_matches(struct Playfield *P) {
+	int x = 0, y = 0;
+	int count = 0;
+	int old_color = 0;
+	int is_chain = 0;
+	int first_panel_row = 0;
+	int first_panel_col = 0;
+	int combo_size = 0;
+
+	for(x=0; x<P->width; x++)
+		for(y=0; y<P->height; y++)
+			P->panel_extra[x][y].flags &= ~FLAG_MATCHING;
+
+	for(x=0; x<P->width; x++) {
+		for(y=0; y<P->height-1; y++) {
+			// check vertical match centered here.
+			if(y != 0 && y != P->height-2) {
+				if(exclude_match(P, x, y-1) || exclude_match(P, x, y) || exclude_match(P, x, y+1))
+					continue;
+				if(P->playfield[x][y-1] != P->playfield[x][y]
+				|| P->playfield[x][y+1] != P->playfield[x][y])
+					continue;
+				for(int y2 = y-1; y2<=y+1; y2++) {
+					combo_size += set_matched(P, x, y2, &is_chain);
+					LogMessage("v match");
+				}
+			}
+			// check horizontal match centered here
+			if(x != 0 && x != P->width-1) {
+				if(exclude_match(P, x-1, y) || exclude_match(P, x, y) || exclude_match(P, x+1, y))
+					continue;
+				if(P->playfield[x-1][y] != P->playfield[x][y]
+				|| P->playfield[x+1][y] != P->playfield[x][y])
+					continue;
+				for(int x2 = x-1; x2<=x+1; x2++) {
+					combo_size += set_matched(P, x2, y, &is_chain);
+					LogMessage("h match");
+				}
+			}
+		}
+	}
+
+	// TODO: garbage stuff
+	int garbage_size = 0;
+
+	if(is_chain) {
+		if(P->chain_counter) {
+			P->chain_counter++;
+		} else {
+			P->chain_counter = 2;
+		}
+	}
+
+	int pre_stop_time      = MATCH_TIME + POP_TIME * (combo_size + garbage_size);
+	int garbage_match_time = MATCH_TIME + POP_TIME * (combo_size + garbage_size);
+	int garbage_index = garbage_size - 1;
+	int combo_index = combo_size;
+
+	for(y = P->height-2; y>=0; y--) {
+		for(x = P->width-1; x>=0; x--) {
+			if(y >= 0) {
+				struct panel_extra *extra = &P->panel_extra[x][y];
+				if(extra->flags & FLAG_MATCHING) {
+					extra->state = STATE_MATCHED;
+					extra->timer = MATCH_TIME + 1;
+					if(is_chain && !(extra->flags & FLAG_CHAINING)) {
+						extra->flags |= FLAG_CHAINING;
+						P->n_chain_panels++;
+					}
+					extra->combo_index = combo_index;
+					extra->combo_size = combo_size;
+					extra->chain_index = P->chain_counter;
+					combo_index--;
+					if(!combo_index) {
+						first_panel_row = y;
+						first_panel_col = x;
+					}
+				} else {
+					/*
+						if a panel wasn't matched but was eligible,
+						we might have to remove its chain flag...!
+						It can't actually chain the first frame it hovers,
+						so it can keep its chaining flag in that case.
+					*/
+					if(!(extra->flags & FLAG_MATCH_ANYWAY) && !exclude_match(P,x,y)) {
+						if(y != P->height-2) {
+							if(P->panel_extra[x][y+1].state != STATE_SWAPPING
+							&& extra->flags & FLAG_CHAINING) {
+								extra->flags &= ~FLAG_CHAINING;
+								P->n_chain_panels--;
+							}
+						}
+					} else if(extra->flags & FLAG_CHAINING) {
+						extra->flags &= ~FLAG_CHAINING;
+						P->n_chain_panels--;
+					}
+				}
+
+			}
+		}
+	}
 
 }
 
@@ -353,7 +492,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 							break;
 						case STATE_MATCHED:
 							extra->state = STATE_POPPING;
-							extra->timer = extra->combo_index * 12; // self.FRAMECOUNT_POP
+							extra->timer = extra->combo_index * POP_TIME;
 							break;
 						case STATE_POPPING:
 							P->Score += 10;
@@ -370,7 +509,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 								set_hoverers(P, x, y-1, HOVER_TIME+1, 1, 0, 1);
 							} else {
 								extra->state = STATE_POPPED;
-								extra->timer = (extra->combo_size - extra->combo_index) * 12; // self.FRAMECOUNT_POP
+								extra->timer = (extra->combo_size - extra->combo_index) * POP_TIME;
 								P->panels_cleared++;
 								// TODO: metal panels
 								P->popped_panel_index = extra->combo_index;
