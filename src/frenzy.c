@@ -78,14 +78,14 @@ int base_points_for_combo(int size) {
 
 // Calculates the number of points to award for a part of a chain
 int points_for_chain_part(int size) {
-// Size is the chain number from the original game, minus 1
-// so if you clear blocks and cause a chain, size is 1
+// Size is the chain number from the original game
+// so if you clear blocks and cause a chain, size is 2
 	const static int table[] = {50, 80, 150, 300, 400, 500, 700, 900, 1100, 1300, 1500, 1800};
 	if(size <= 1)
 		return 0;
 	if(size <= 12)
-		return table[size-1];
-	return 6980 + ((size+1 - 12) * 1800);
+		return table[size-2];
+	return 6980 + ((size - 12) * 1800);
 }
 
 int can_swap(struct Playfield *P, int right) {
@@ -199,15 +199,16 @@ int set_matched(struct Playfield *P, int x, int y, int *is_chain) {
 		P->panel_extra[x][y].flags &= ~FLAG_CHAINING;
 		P->n_chain_panels--;
 	}
-	if(P->panel_extra[x][y].flags & FLAG_CHAINING)
+	if(P->panel_extra[x][y].flags & FLAG_CHAINING) {
 		*is_chain = 1;
+	}
 	return added;
 }
 
 void look_for_matches(struct Playfield *P) {
 	int x = 0, y = 0;
-	int count = 0;
-	int old_color = 0;
+//	int count = 0;
+//	int old_color = 0;
 	int is_chain = 0;
 	int first_panel_row = 0;
 	int first_panel_col = 0;
@@ -241,16 +242,16 @@ void look_for_matches(struct Playfield *P) {
 					continue;
 				for(int x2 = x-1; x2<=x+1; x2++) {
 					combo_size += set_matched(P, x2, y, &is_chain);
-					LogMessage("h match");
 				}
 			}
 		}
 	}
 
 	// TODO: garbage stuff
-	int garbage_size = 0;
+//	int garbage_size = 0;
 
 	if(is_chain) {
+		LogMessage("chain");
 		if(P->chain_counter) {
 			P->chain_counter++;
 		} else {
@@ -258,9 +259,9 @@ void look_for_matches(struct Playfield *P) {
 		}
 	}
 
-	int pre_stop_time      = MATCH_TIME + POP_TIME * (combo_size + garbage_size);
-	int garbage_match_time = MATCH_TIME + POP_TIME * (combo_size + garbage_size);
-	int garbage_index = garbage_size - 1;
+//	int pre_stop_time      = MATCH_TIME + POP_TIME * (combo_size + garbage_size);
+//	int garbage_match_time = MATCH_TIME + POP_TIME * (combo_size + garbage_size);
+//	int garbage_index = garbage_size - 1;
 	int combo_index = combo_size;
 
 	for(y = P->height-2; y>=0; y--) {
@@ -306,6 +307,29 @@ void look_for_matches(struct Playfield *P) {
 			}
 		}
 	}
+
+	if(combo_size != 0) {
+		P->Score += base_points_for_combo(combo_size);
+		if(is_chain) {
+			P->Score += points_for_chain_part(P->chain_counter);
+		}
+
+        struct ComboNumber *Num = (struct ComboNumber*)malloc(sizeof(struct ComboNumber));
+        Num->X = first_panel_col*TILE_W + TILE_W/2;
+        Num->Y = first_panel_row*TILE_H + TILE_H/2;
+        if(is_chain) {
+          Num->Number = P->chain_counter;
+          Num->Flags = TEXT_CHAIN|TEXT_CENTERED;
+        } else {
+          Num->Number = combo_size;
+          Num->Flags = TEXT_CENTERED;
+        }
+        Num->Timer = 30;
+        Num->Next = P->ComboNumbers;
+        Num->Speed = 0;
+        P->ComboNumbers = Num;
+	}
+	
 
 }
 
