@@ -296,10 +296,10 @@ void look_for_matches(struct Playfield *P) {
 								extra->flags &= ~FLAG_CHAINING;
 								P->n_chain_panels--;
 							}
+						} else if(extra->flags & FLAG_CHAINING) {
+							extra->flags &= ~FLAG_CHAINING;
+							P->n_chain_panels--;
 						}
-					} else if(extra->flags & FLAG_CHAINING) {
-						extra->flags &= ~FLAG_CHAINING;
-						P->n_chain_panels--;
 					}
 				}
 
