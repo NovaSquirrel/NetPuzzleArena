@@ -222,13 +222,14 @@ void look_for_matches(struct Playfield *P) {
 			// check vertical match centered here.
 			if(y != 0 && y != P->height-2) {
 				if(exclude_match(P, x, y-1) || exclude_match(P, x, y) || exclude_match(P, x, y+1))
-					continue;
-				if(P->playfield[x][y-1] != P->playfield[x][y]
+					;
+				else if(P->playfield[x][y-1] != P->playfield[x][y]
 				|| P->playfield[x][y+1] != P->playfield[x][y])
-					continue;
-				for(int y2 = y-1; y2<=y+1; y2++) {
-					combo_size += set_matched(P, x, y2, &is_chain);
-					LogMessage("v match");
+					;
+				else {
+					for(int y2 = y-1; y2<=y+1; y2++) {
+						combo_size += set_matched(P, x, y2, &is_chain);
+					}
 				}
 			}
 			// check horizontal match centered here
