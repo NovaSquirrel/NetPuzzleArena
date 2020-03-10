@@ -94,8 +94,11 @@ void DrawPlayfield(struct Playfield *P, int DrawX, int DrawY) {
 		if(Extra->state != STATE_SWAPPING) {
 			blit(TileSheet, ScreenRenderer, TILE_W*Tile, TILE_H*YState, DrawX+x*TILE_W, DrawY+y*TILE_H-Rise, TILE_W, TILE_H);
 		} else {
-			blit(TileSheet, ScreenRenderer, TILE_W*Tile, TILE_H*YState, DrawX+x*TILE_W, DrawY+y*TILE_H-Rise, TILE_W, TILE_H);
-//			blit(TileSheet, ScreenRenderer, TILE_W*Tile, TILE_H*YState, DrawX+x*TILE_W+Extra->swap*ScaleFactor, DrawY+y*TILE_H-Rise, TILE_W, TILE_H);
+			int DrawX2 = DrawX+x*TILE_W;
+			if(Extra->flags & FLAG_SWAPPING_FROM_LEFT)
+				blit(TileSheet, ScreenRenderer, TILE_W*Tile, TILE_H*YState, DrawX2-4*Extra->timer*ScaleFactor, DrawY+y*TILE_H-Rise, TILE_W, TILE_H);
+			else
+				blit(TileSheet, ScreenRenderer, TILE_W*Tile, TILE_H*YState, DrawX2+4*Extra->timer*ScaleFactor, DrawY+y*TILE_H-Rise, TILE_W, TILE_H);
 		}
       }
     // draw the bottom row
