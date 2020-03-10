@@ -457,9 +457,11 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 								set_hoverers(P, x, y-1, HOVER_TIME+1, 0, 0, 0);
 								break;
 							}
-							if(y != P->height-2)
+							if(y == P->height-2)
 								break;
 							if(!P->playfield[x][y+1]) {
+								// if there is no panel beneath this panel,
+								// it will begin to hover.
 								set_hoverers(P, x, y, HOVER_TIME, 0, 1, 0);
 								if(from_left) {
 									if(P->panel_extra[x][y+1].state == STATE_FALLING)
@@ -469,6 +471,7 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 										set_hoverers(P, x+1, y, HOVER_TIME+1, 0, 0, 0);
 								}
 							} else if (P->panel_extra[x][y+1].state == STATE_HOVERING) {
+								// swap may have landed on a hover
 								set_hoverers(P, x, y, HOVER_TIME, 0, 1, P->panel_extra[x][y+1].flags & FLAG_MATCH_ANYWAY);
 							}
 							break;
