@@ -129,7 +129,7 @@ enum BlockColor {
 
 enum GameplayOptions {
 	SWAP_INSTANTLY = 1,
-	LIFT_WHILE_CLEARING = 2,
+	LIFT_WHILE_CLEARING = 2,   // "Exploding lift"
 	PULL_BLOCK_HORIZONTAL = 4,
 	MOUSE_CONTROL = 8,
 	NO_AUTO_REPEAT = 16,
@@ -245,15 +245,17 @@ struct Playfield {
 
 	// Frenzy
 	int speed;
-	int y_scroll; // amount of pixels the playfield is scrolled by
+	int y_scroll;         // amount of pixels the playfield is scrolled by (0-15)
+	int auto_rise_timer;  // counts up by 16 to hit the target
+	int stop_time;
 	int rise_lock;
 	int do_swap;
-	int LiftKeyOn, RiseStopTimer;
+	int manual_raise, manual_raise_yet, prevent_manual_raise;
+
 	struct MatchRow *Match;
 	struct FallingChunk *FallingData;
 	struct ComboNumber *ComboNumbers;
 	struct GarbageSlab *GarbageSlabs;
-	int manual_raise, manual_raise_yet;
 	int n_chain_panels, prev_active_panels, n_active_panels, panels_cleared;
 	int popped_panel_index, panels_to_speedup;
 

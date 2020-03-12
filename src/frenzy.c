@@ -27,12 +27,26 @@
 extern int FrameAdvance;
 extern int FrameAdvanceMode;
 
+int speed_to_rise(int speed) {
+	const static int speeds[] = {
+	942, 983, 838, 790, 755, 695, 649, 604, 570, 515,
+	474, 444, 394, 370, 347, 325, 306, 289, 271, 256,
+	240, 227, 213, 201, 189, 178, 169, 158, 148, 138,
+	129, 120, 112, 105,  99,  92,  86,  82,  77,  73,
+	69,  66,  62,  59,  56,  54,  52,  50,  48,  47};
+	if(speed == 0)
+		return 0;
+	if(speed >= 50)
+		return 47;
+	return speeds[speed-1];
+}
 
 void InitPuzzleFrenzy(struct Playfield *P) {
 	for(int j=P->height-5; j>0 && j<P->height; j++)
 		RandomizeRow(P, j);
 	P->CursorX = 2;
 	P->CursorY = 6;
+	P->speed = P->GameSpeed;
 }
 
 // Takes a combo size (in number of tiles) and figures out how much garbage it amounts to
@@ -314,20 +328,22 @@ void look_for_matches(struct Playfield *P) {
 			P->Score += points_for_chain_part(P->chain_counter);
 		}
 
-        struct ComboNumber *Num = (struct ComboNumber*)malloc(sizeof(struct ComboNumber));
-        Num->X = first_panel_col*TILE_W + TILE_W/2;
-        Num->Y = first_panel_row*TILE_H + TILE_H/2;
-        if(is_chain) {
-          Num->Number = P->chain_counter;
-          Num->Flags = TEXT_CHAIN|TEXT_CENTERED;
-        } else {
-          Num->Number = combo_size;
-          Num->Flags = TEXT_CENTERED;
-        }
-        Num->Timer = 30;
-        Num->Next = P->ComboNumbers;
-        Num->Speed = 0;
-        P->ComboNumbers = Num;
+		if(combo_size > 3 || is_chain) {
+			struct ComboNumber *Num = (struct ComboNumber*)malloc(sizeof(struct ComboNumber));
+			Num->X = first_panel_col*TILE_W + TILE_W/2;
+			Num->Y = first_panel_row*TILE_H + TILE_H/2;
+			if(is_chain) {
+			  Num->Number = P->chain_counter;
+			  Num->Flags = TEXT_CHAIN|TEXT_CENTERED;
+			} else {
+			  Num->Number = combo_size;
+			  Num->Flags = TEXT_CENTERED;
+			}
+			Num->Timer = 30;
+			Num->Next = P->ComboNumbers;
+			Num->Speed = 0;
+			P->ComboNumbers = Num;
+		}
 	}
 	
 
@@ -400,6 +416,19 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 
 	// Phase 0 //////////////////////////////////////////////////////////////
 	// Stack automatic rising
+
+	P->rise_lock = P->n_active_panels || P->prev_active_panels || P->do_swap;
+
+	int has_risen_this_frame = 0;
+	if(P->speed && !P->stop_time && !P->rise_lock && !P->manual_raise) {
+		P->auto_rise_timer += 16;
+		int target = speed_to_rise(P->speed);
+		if(P->auto_rise_timer >= target) {
+			P->auto_rise_timer -= target;
+			P->y_scroll++;
+			has_risen_this_frame = 1;
+		}
+	}
 
 	// TODO
 
@@ -584,7 +613,28 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 	}
 
 	// MANUAL STACK RAISING
-	// TODO
+	if(P->KeyDown[KEY_LIFT] && !P->prevent_manual_raise) {
+		P->manual_raise = 1;
+		P->manual_raise_yet = 0;
+	}
+
+	if(P->manual_raise) {
+		if(!P->rise_lock || (P->Flags & LIFT_WHILE_CLEARING)) {
+			P->y_scroll++;
+			if(P->y_scroll >= 16) {
+				P->manual_raise = 0;
+				P->auto_rise_timer = 0;
+				P->Score++;
+				P->prevent_manual_raise = 1;
+			}
+			P->manual_raise_yet = 1;
+			P->stop_time = 0;
+			has_risen_this_frame = 1;
+		} else if(!P->manual_raise_yet) {
+			P->manual_raise = 0;
+		}
+	}
+
 
 	// If at the end of the routine there are no chain panels, the chain ends.
 	if(P->chain_counter && !P->n_chain_panels) {
@@ -605,6 +655,26 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 			)
 				P->n_active_panels++;
 		}
+	}
+
+	if(has_risen_this_frame && P->y_scroll == 16) {
+		P->y_scroll = 0;
+		P->prevent_manual_raise = 0;
+
+		for(int y=0; y<P->height-1; y++) {
+			for(int x=0; x<P->width; x++) {
+				P->playfield[x][y] = P->playfield[x][y+1];
+				P->panel_extra[x][y] = P->panel_extra[x][y+1];
+			}
+		}
+		RandomizeRow(P, P->height-1);
+
+		for(struct ComboNumber *Num = P->ComboNumbers; Num; Num=Num->Next)
+			Num->Y -= TILE_H;
+
+		P->CursorY--;
+		if(!P->CursorY)
+			P->CursorY = 1;
 	}
 
 }

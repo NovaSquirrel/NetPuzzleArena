@@ -403,6 +403,7 @@ void RandomizeRow(struct Playfield *P, int y) {
 			if(y >= 2 && GetTile(P, x, y-1) == Color && GetTile(P, x, y-2) == Color)
 				continue;
 			SetTile(P, x, y, Color);
+			memset(&P->panel_extra[x][y], 0, sizeof(struct panel_extra));
 			break;
 		}
 	}
