@@ -116,7 +116,9 @@ int can_swap(struct Playfield *P, int right) {
 	}
 	if(P->panel_extra[x][y].flags & (FLAG_DONT_SWAP|FLAG_GARBAGE))
 		return 0;
-	// TODO: Panel Attack's vertical stack check thing?
+	// Tile above cannot be hovering
+	if(y && P->panel_extra[x][y-1].state == STATE_HOVERING)
+		return 0;
 	return 1;
 }
 
@@ -610,6 +612,24 @@ void UpdatePuzzleFrenzy(struct Playfield *P) {
 		&& (GetColor(P, P->CursorX, P->CursorY) || GetColor(P, P->CursorX+1, P->CursorY))
 		&& (P->KeyNew[KEY_ROTATE_L] || P->KeyNew[KEY_ROTATE_R])) {
 		P->do_swap = 1;
+
+		// If you have two pieces stacked vertically, you can't move
+		// both of them to the right or left by swapping with empty space.
+		// May be different in Animal Crossing Puzzle League?
+		if(!P->playfield[P->CursorX][P->CursorY] || !P->playfield[P->CursorX+1][P->CursorY]) {
+			P->do_swap = P->do_swap && !(P->CursorY
+				&& P->panel_extra[P->CursorX][P->CursorY-1].state == STATE_SWAPPING
+				&& P->panel_extra[P->CursorX+1][P->CursorY-1].state == STATE_SWAPPING
+				&& (P->playfield[P->CursorX][P->CursorY-1]  || P->playfield[P->CursorX+1][P->CursorY-1])
+				&& (!P->playfield[P->CursorX][P->CursorY-1] || !P->playfield[P->CursorX+1][P->CursorY-1])
+			);
+			P->do_swap = P->do_swap && !(P->CursorY != P->height-2
+				&& P->panel_extra[P->CursorX][P->CursorY+1].state == STATE_SWAPPING
+				&& P->panel_extra[P->CursorX+1][P->CursorY+1].state == STATE_SWAPPING
+				&& (P->playfield[P->CursorX][P->CursorY+1]  || P->playfield[P->CursorX+1][P->CursorY+1])
+				&& (!P->playfield[P->CursorX][P->CursorY+1] || !P->playfield[P->CursorX+1][P->CursorY+1])
+			);
+		}
 	}
 
 	// MANUAL STACK RAISING
